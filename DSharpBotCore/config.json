@@ -1,0 +1,27 @@
+﻿{
+  "token": "NDQyODAxMjgyNTIxMTA0Mzg0.DdF-tg.F9aEvaZ_pSLieISgZGhSIL-xLUg",
+  "prefix": ".",
+  "log": true,
+  "logLevel": "debug",
+  "interactivity": {
+    "timeout": "0h5m00.s",
+    "pagination": {
+      "timeout": "0h5m00.s",
+      "behaviour": "default"
+    }
+  },
+  "commands": {
+    "poll": {
+      "errorPersist": "0h0m10.s",
+      "deleteResponses": true
+    },
+    "roll": {
+      "d6": {
+        "useSpecial": false,
+        "rolls": 25,
+        "rollInterval": "0h0m00.1s"
+      },
+      "deleteTrigger": true
+    }
+  }
+}

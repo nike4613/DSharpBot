@@ -9,6 +9,13 @@
     <None Remove="libs\ffmpeg.exe" />
     <None Remove="libs\libopus.dll" />
     <None Remove="libs\libsodium.dll" />
+    <None Remove="libs\runbot.bat" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="libs\runbot.bat">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
@@ -38,7 +45,7 @@
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="move $(OutDir)\libs\* $(OutDir)" />
+    <Exec Command="move $(OutDir)\libs\* $(OutDir)&#xD;&#xA;rmdir $(OutDir)\libs" />
   </Target>
 
 </Project>

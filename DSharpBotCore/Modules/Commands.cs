@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using DSharpBotCore.Extensions;
 using DSharpBotCore.Entities;
+using System.Threading;
 
 namespace DSharpBotCore.Modules
 {
@@ -15,10 +16,12 @@ namespace DSharpBotCore.Modules
     {
         Bot bot;
         Configuration config;
-        public Commands(Bot bot, Configuration config)
+        CancellationTokenSource cts;
+        public Commands(Bot bot, Configuration config, CancellationTokenSource cts)
         {
             this.bot = bot;
             this.config = config;
+            this.cts = cts;
         }
 
         [Command("hi"), Hidden]
@@ -211,6 +214,14 @@ namespace DSharpBotCore.Modules
             embed.Description = $"The results: {results.Select(x => $"`{x}`").MakeReadableString()}.\nThe sum: `{results.Sum()}`.";
 
             await ctx.RespondAsync(embed: embed);
+        }
+
+        [Command("exit"), Hidden, RequireOwner]
+        [Description("Causes the bot to quit.")]
+        public Task QuitBot(CommandContext ctx)
+        {
+            cts.Cancel();
+            return Task.CompletedTask;
         }
     }
 }

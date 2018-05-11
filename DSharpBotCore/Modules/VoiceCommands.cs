@@ -22,6 +22,8 @@ namespace DSharpBotCore.Modules
             this.config = config;
         }
 
+        FFController ffstream = new FFController(FFController.FFLogLevel.quiet);
+
         [Command("join"), Description("Joins the user's voice channel.")]
         public async Task Join(CommandContext ctx)
         {
@@ -43,31 +45,56 @@ namespace DSharpBotCore.Modules
 
             vnc = await vnext.ConnectAsync(chn);
             await ctx.RespondAsync("👌");
+        }
+
+        [Command("play"), Description("Leaves the voice channel.")]
+        public async Task Play(CommandContext ctx)
+        {
+            var vnext = ctx.Client.GetVoiceNext();
+
+            var vnc = vnext.GetConnection(ctx.Guild);
+            if (vnc == null)
+            {
+                await ctx.ErrorWith(bot, "Error playing audio", "Not currently connected");
+                return;
+            }
 
             await vnc.SendSpeakingAsync(true); // send a speaking indicator
 
-            var psi = new ProcessStartInfo
+            try
             {
-                FileName = "ffmpeg",
-                Arguments = $@"-i ""Z:/Users/aaron/Desktop/music/Creo/Creo - Start Your Engines.flac"" -ac 2 -f s16le -ar 48000 pipe:1",
-                RedirectStandardOutput = true,
-                UseShellExecute = false
-            };
-            var ffmpeg = Process.Start(psi);
-            var ffout = ffmpeg.StandardOutput.BaseStream;
-
-            var buff = new byte[3840];
-            var br = 0;
-            while ((br = ffout.Read(buff, 0, buff.Length)) > 0)
+                await ffstream.PlayUsingAsync("Z:/Users/aaron/Desktop/music/Creo/Creo - Start Your Engines.flac", vnc.SendAsync);
+            }
+            catch (Exception e)
             {
-                if (br < buff.Length) // not a full sample, mute the rest
-                    for (var i = br; i < buff.Length; i++)
-                        buff[i] = 0;
-
-                await vnc.SendAsync(buff, 20);
+                await ctx.ErrorWith(bot, "Error stopping audio", "PlayUsing() threw an error", ($"{e.GetType().Name} in {e.TargetSite.Name}", e.Message));
+                return;
             }
 
             await vnc.SendSpeakingAsync(false); // we're not speaking anymore
+        }
+
+        [Command("stop"), Description("Leaves the voice channel.")]
+        public async Task Stop(CommandContext ctx)
+        {
+            var vnext = ctx.Client.GetVoiceNext();
+
+            var vnc = vnext.GetConnection(ctx.Guild);
+            if (vnc == null)
+            {
+                await ctx.ErrorWith(bot, "Error stopping audio", "Not currently connected");
+                return;
+            }
+
+            try
+            {
+                ffstream.Stop();
+            }
+            catch (Exception e)
+            {
+                await ctx.ErrorWith(bot, "Error stopping audio", "Stop() threw an error", ($"{e.GetType().Name} in {e.TargetSite.Name}", e.Message));
+                return;
+            }
         }
 
         [Command("leave"), Description("Leaves the voice channel.")]
@@ -81,6 +108,9 @@ namespace DSharpBotCore.Modules
                 await ctx.ErrorWith(bot, "Error disconnecting from voice", "Not currently connected");
                 return;
             }
+
+            if (ffstream.IsPlaying)
+                ffstream.Stop();
 
             vnc.Disconnect();
             await ctx.RespondAsync("👌");

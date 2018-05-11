@@ -163,6 +163,10 @@ namespace DSharpBotCore
             // Stay alive
             while (!CTS.IsCancellationRequested)
                 await Task.Delay(500);
+
+            await Client.DisconnectAsync();
+
+            Client.DebugLogger.LogMessage(LogLevel.Info, Config.Name, $"{Config.Name} ({Author}/{ProjectName} {Version}) stopped", DateTime.Now);
         }
 
         private Task Client_ClientError(ClientErrorEventArgs e)

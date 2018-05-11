@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace DSharpBotCore
+namespace DSharpBotCore.Extensions
 {
     public static class EnumerableExtensions
     {

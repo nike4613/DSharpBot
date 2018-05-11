@@ -7,13 +7,13 @@ namespace DSharpBotCore.Extensions
 {
     public static class DiscordEmbedBuilderExtensions
     {
-        public static DiscordEmbedBuilder WithDefaultFooter(this DiscordEmbedBuilder builder)
+        public static DiscordEmbedBuilder WithDefaultFooter(this DiscordEmbedBuilder builder, Bot bot)
         {
             return builder
                 .WithTimestamp(DateTime.Now)
                 .WithFooter(
-                    text: "Icons Bot",
-                    icon_url: Program.Client.CurrentUser.AvatarUrl
+                    text: bot.Config.Name,
+                    icon_url: bot.Client.CurrentUser.AvatarUrl
                 );
         }
 

@@ -6,10 +6,28 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="DSharpPlus" Version="3.2.3" />
-    <PackageReference Include="DSharpPlus.CommandsNext" Version="3.2.3" />
-    <PackageReference Include="DSharpPlus.Interactivity" Version="3.2.3" />
-    <PackageReference Include="DSharpPlus.VoiceNext" Version="3.2.3" />
+    <None Remove="libs\ffmpeg.exe" />
+    <None Remove="libs\libopus.dll" />
+    <None Remove="libs\libsodium.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="libs\ffmpeg.exe">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="libs\libopus.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="libs\libsodium.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DSharpPlus" Version="4.0.0-beta-00449" />
+    <PackageReference Include="DSharpPlus.CommandsNext" Version="4.0.0-beta-00449" />
+    <PackageReference Include="DSharpPlus.Interactivity" Version="4.0.0-beta-00449" />
+    <PackageReference Include="DSharpPlus.VoiceNext" Version="4.0.0-beta-00449" />
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
   </ItemGroup>
 
@@ -18,5 +36,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="move $(OutDir)\libs\* $(OutDir)" />
+  </Target>
 
 </Project>

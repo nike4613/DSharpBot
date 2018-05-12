@@ -59,6 +59,8 @@ namespace DSharpBotCore.Modules
                 return;
             }
 
+
+
             await vnc.SendSpeakingAsync(true); // send a speaking indicator
 
             try

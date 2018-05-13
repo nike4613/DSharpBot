@@ -54,7 +54,9 @@ namespace DSharpBotCore.Modules
 
         public delegate Task PlayBuffer(byte[] data, int blockSize, int bitRate);
 
-        public async Task PlayUsingAsync(string source, PlayBuffer player)
+        private Task PlayerTask;
+
+        private async Task _PlayUsingAsync(string source, PlayBuffer player)
         {
             if (IsPlaying)
                 throw new InvalidOperationException("Cannot play one thing while another is being played!");
@@ -87,105 +89,22 @@ namespace DSharpBotCore.Modules
                 ffproc.Kill();
         }
 
+        public Task PlayUsingAsync(string source, PlayBuffer player) => (PlayerTask = _PlayUsingAsync(source, player));
+
         public Task PlayUsing(string source, PlayBuffer player) => PlayUsingAsync(source, player);
 
-        public void Stop()
+        public async Task Stop()
         {
             if (!IsPlaying)
                 throw new InvalidOperationException("FFController is not currently playing anything!");
             cancel.Cancel();
+            await PlayerTask;
         }
         public void StopAfter(TimeSpan delay)
         {
             if (!IsPlaying)
                 throw new InvalidOperationException("FFController is not currently playing anything!");
             cancel.CancelAfter(delay);
-        }
-
-        public MultiPlayer GetMultiPlayer(PlayBuffer player)
-        {
-            var mp = new MultiPlayer(player, this);
-            mp.Init();
-            return mp;
-        }
-
-        public class MultiPlayer : IDisposable
-        {
-            PlayBuffer player;
-            Process ffproc;
-            FFController parent;
-            Task playerTask;
-            bool playing = false;
-
-            protected internal MultiPlayer(PlayBuffer play, FFController parent)
-            {
-                this.parent = parent;
-                player = play;
-            }
-
-            protected internal void Init() // create process
-            {
-                var ffinfo = new ProcessStartInfo
-                {
-                    FileName = parent.ffmpeg,
-                    Arguments = $@"-v {parent.logLevel.ToString()} -f concat -i pipe: -ac {parent.channels} -f s16le -ar {parent.samples} pipe:1",
-                    RedirectStandardOutput = true,
-                    RedirectStandardInput = true,
-                    UseShellExecute = false
-                };
-                ffproc = Process.Start(ffinfo);
-            }
-
-            public class PlayerEventArgs : EventArgs
-            {
-
-            }
-
-            public event EventHandler<PlayerEventArgs> OnPlayStart;
-            public event EventHandler<PlayerEventArgs> OnPlayStop;
-
-            protected internal async Task PlayAudio()
-            {
-                var ffout = ffproc.StandardOutput.BaseStream;
-
-                var buff = new byte[3840];
-                var br = 0;
-                playing = true;
-                OnPlayStart(this, new PlayerEventArgs());
-                while ((br = ffout.Read(buff, 0, buff.Length)) > 0)
-                {
-                    if (br < buff.Length) // not a full sample, mute the rest
-                        for (var i = br; i < buff.Length; i++)
-                            buff[i] = 0;
-
-                    await player(buff, 20, 16); // This is s16le PCM audio after all
-                }
-                playing = false;
-                OnPlayStop(this, new PlayerEventArgs());
-            }
-
-            public Task StartPlayer() => playerTask = PlayAudio();
-
-            public void PlayFile(string filename)
-            {
-                var file = filename.Replace(@"\", @"\\").Replace(@"'", @"\'");
-
-                ffproc.StandardInput.WriteLine($"file '{file}'");
-            }
-
-            public void Dispose()
-            {
-                if  (ffproc != null)
-                {
-                    ffproc.Kill();
-                    ffproc.Dispose();
-                }
-
-                if (playerTask != null)
-                {
-                    playerTask.Wait(); // wait for player to finish up
-                }
-            }
         }
     }
 }

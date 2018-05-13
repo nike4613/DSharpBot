@@ -47,8 +47,9 @@ namespace DSharpBotCore.Modules
             await ctx.RespondAsync("👌");
         }
 
-        [Command("play"), Description("Leaves the voice channel.")]
-        public async Task Play(CommandContext ctx)
+        [Command("play"), Description("Plays the song.")]
+        public async Task Play(CommandContext ctx, 
+            [Description("The song id to play")] int songid = 3)
         {
             var vnext = ctx.Client.GetVoiceNext();
 
@@ -59,13 +60,21 @@ namespace DSharpBotCore.Modules
                 return;
             }
 
-
-
             await vnc.SendSpeakingAsync(true); // send a speaking indicator
+
+            songid = songid < 4 ? songid : 3;
+
+            string[] songs =
+            new string[]{
+                "Z:/Users/aaron/Desktop/music/Creo/Creo - Showdown.flac",
+                "Z:/Users/aaron/Desktop/music/Creo/Creo - Make It Look Like An Accident.flac",
+                "Z:/Users/aaron/Desktop/music/Creo/Creo - Rock Thing.flac",
+                "Z:/Users/aaron/Desktop/music/Creo/Creo - Slow Down.flac",
+            };
 
             try
             {
-                await ffstream.PlayUsingAsync("Z:/Users/aaron/Desktop/music/Creo/Creo - Start Your Engines.flac", vnc.SendAsync);
+                await ffstream.PlayUsingAsync(songs[songid], vnc.SendAsync);
             }
             catch (Exception e)
             {
@@ -90,7 +99,7 @@ namespace DSharpBotCore.Modules
 
             try
             {
-                ffstream.Stop();
+                await ffstream.Stop();
             }
             catch (Exception e)
             {
@@ -110,9 +119,9 @@ namespace DSharpBotCore.Modules
                 await ctx.ErrorWith(bot, "Error disconnecting from voice", "Not currently connected");
                 return;
             }
-
+            
             if (ffstream.IsPlaying)
-                ffstream.Stop();
+                await ffstream.Stop();
 
             vnc.Disconnect();
             await ctx.RespondAsync("👌");

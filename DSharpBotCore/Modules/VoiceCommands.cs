@@ -16,13 +16,16 @@ namespace DSharpBotCore.Modules
     {
         Bot bot;
         Configuration config;
-        public VoiceCommands(Bot bot, Configuration config)
+        DownloadManager manager;
+        public VoiceCommands(Bot bot, Configuration config, DownloadManager manager)
         {
             this.bot = bot;
             this.config = config;
+            this.manager = manager;
+            ffstream = new FFController(FFController.FFLogLevel.quiet, config.Voice.FFMpegLocation);
         }
 
-        FFController ffstream = new FFController(FFController.FFLogLevel.quiet);
+        FFController ffstream;// = new FFController(FFController.FFLogLevel.quiet);
 
         [Command("join"), Description("Joins the user's voice channel.")]
         public async Task Join(CommandContext ctx)
@@ -78,7 +81,7 @@ namespace DSharpBotCore.Modules
             }
             catch (Exception e)
             {
-                await ctx.ErrorWith(bot, "Error stopping audio", "PlayUsing() threw an error", ($"{e.GetType().Name} in {e.TargetSite.Name}", e.Message));
+                await ctx.ErrorWith(bot, "Error playing audio", "PlayUsing() threw an error", ($"{e.GetType().Name} in {e.TargetSite.Name}", e.Message));
                 return;
             }
 

@@ -71,6 +71,9 @@ namespace DSharpBotCore.Entities
         {
             [JsonProperty("enabled", Required = Required.DisallowNull)]
             public bool Enabled = false;
+
+            [JsonProperty("ffmpegLocation", Required = Required.DisallowNull)]
+            public string FFMpegLocation = "ffmpeg";
         }
 
         [JsonProperty("voice", Required = Required.DisallowNull)]

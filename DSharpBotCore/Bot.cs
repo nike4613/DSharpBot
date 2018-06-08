@@ -110,12 +110,13 @@ namespace DSharpBotCore
 
             var services = new ServiceCollection();
 
-            services.AddSingleton(Config);
-            services.AddSingleton(CTS);
-            services.AddSingleton(Client);
-            services.AddSingleton(Interactivity);
-            services.AddSingleton(Voice);
-            services.AddSingleton(this);
+            services.AddSingleton(Config)
+                    .AddSingleton(CTS)
+                    .AddSingleton(Client)
+                    .AddSingleton(Interactivity)
+                    .AddSingleton(Voice)
+                    .AddSingleton<DownloadManager>()
+                    .AddSingleton(this);
 
             var serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions()
             {

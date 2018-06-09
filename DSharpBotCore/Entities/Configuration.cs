@@ -74,6 +74,21 @@ namespace DSharpBotCore.Entities
 
             [JsonProperty("ffmpegLocation", Required = Required.DisallowNull)]
             public string FFMpegLocation = "ffmpeg";
+
+            public class DownloadObject
+            {
+                [JsonProperty("format", Required = Required.DisallowNull), JsonConverter(typeof(StringEnumConverter), false)]
+                public NYoutubeDL.Helpers.Enums.AudioFormat Format = NYoutubeDL.Helpers.Enums.AudioFormat.wav;
+
+                [JsonProperty("ydlLocation", Required = Required.DisallowNull)]
+                public string YoutubeDlLocation = "youtube-dl";
+
+                [JsonProperty("downloadLocation", Required = Required.DisallowNull)]
+                public string DownloadLocation = "audio";
+            }
+
+            [JsonProperty("voice", Required = Required.DisallowNull)]
+            public DownloadObject Download = new DownloadObject();
         }
 
         [JsonProperty("voice", Required = Required.DisallowNull)]

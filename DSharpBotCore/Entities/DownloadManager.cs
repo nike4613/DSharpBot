@@ -1,7 +1,7 @@
 ﻿using NYoutubeDL;
-using static NYoutubeDL.Helpers.Enums;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 
 namespace DSharpBotCore.Entities
@@ -19,12 +19,12 @@ namespace DSharpBotCore.Entities
 
         public DownloadManager(Configuration config)
         {
-            client = new YoutubeDL("youtube-dl.exe");
+            client = new YoutubeDL(config.Voice.Download.YoutubeDlLocation);
 
-            client.Options.FilesystemOptions.Output = "%(id)s.%(extractor)s.%(ext)s";
+            client.Options.FilesystemOptions.Output = Path.Combine(config.Voice.Download.DownloadLocation, "%(id)s.%(extractor)s.%(ext)s");
             client.Options.PostProcessingOptions.ExtractAudio = true;
             client.Options.PostProcessingOptions.AudioQuality = "48k";
-            client.Options.PostProcessingOptions.AudioFormat = AudioFormat.wav; // prefer WAV
+            client.Options.PostProcessingOptions.AudioFormat = config.Voice.Download.Format; // prefer WAV
             client.Options.PostProcessingOptions.FfmpegLocation = config.Voice.FFMpegLocation;
             client.Options.PostProcessingOptions.PreferFfmpeg = true;
         }

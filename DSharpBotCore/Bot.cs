@@ -188,7 +188,12 @@ namespace DSharpBotCore
 
             if (File.Exists(filename))
             {
-                config = JsonConvert.DeserializeObject<Configuration>(File.ReadAllText(filename));
+                string configJson = File.ReadAllText(filename);
+                config = JsonConvert.DeserializeObject<Configuration>(configJson);
+
+                string reserialized = JsonConvert.SerializeObject(config, Formatting.Indented);
+                if (reserialized != configJson) // ensure all properties exist in file
+                    File.WriteAllText(filename, reserialized);
             }
             else
             {

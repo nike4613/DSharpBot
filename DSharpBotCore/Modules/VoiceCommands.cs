@@ -1,4 +1,5 @@
 ﻿using DSharpBotCore.Entities;
+using DSharpBotCore.Entities.Managers;
 using DSharpBotCore.Extensions;
 using DSharpPlus.CommandsNext;
 using DSharpPlus.CommandsNext.Attributes;
@@ -6,6 +7,8 @@ using DSharpPlus.VoiceNext;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -22,10 +25,14 @@ namespace DSharpBotCore.Modules
             this.bot = bot;
             this.config = config;
             this.manager = manager;
-            ffstream = new FFController(FFController.FFLogLevel.quiet, config.Voice.FFMpegLocation);
+            youtubedl = new YoutubeDLWrapper(config.Voice.Download.YoutubeDlLocation);
+            ffmpegLoc = config.Voice.FFMpegLocation;
         }
 
-        FFController ffstream;// = new FFController(FFController.FFLogLevel.quiet);
+        YoutubeDLWrapper youtubedl;
+        string ffmpegLoc;
+        FFMpegWrapper ffwrap;
+        BufferedPipe ytdlPipe;
 
         [Command("join"), Description("Joins the user's voice channel.")]
         public async Task Join(CommandContext ctx)
@@ -50,9 +57,11 @@ namespace DSharpBotCore.Modules
             await ctx.RespondAsync("👌");
         }
 
+        bool stopped = false;
+
         [Command("play"), Description("Plays the song.")]
         public async Task Play(CommandContext ctx, 
-            [Description("The song id to play")] int songid = 3)
+            [Description("The audio to play")] string url)
         {
             var vnext = ctx.Client.GetVoiceNext();
 
@@ -65,22 +74,58 @@ namespace DSharpBotCore.Modules
 
             await vnc.SendSpeakingAsync(true); // send a speaking indicator
 
-            songid = songid < 4 ? songid : 3;
-
-            string[] songs =
-            new string[]{
-                "Z:/Users/aaron/Desktop/music/Creo/Creo - Showdown.flac",
-                "Z:/Users/aaron/Desktop/music/Creo/Creo - Make It Look Like An Accident.flac",
-                "Z:/Users/aaron/Desktop/music/Creo/Creo - Rock Thing.flac",
-                "Z:/Users/aaron/Desktop/music/Creo/Creo - Slow Down.flac",
-            };
+            if (ffwrap != null)
+            {
+                await ctx.ErrorWith(bot, "Error playing audio", "Cannot play 2 sounds at a time");
+                return;
+            }
 
             try
             {
-                await ffstream.PlayUsingAsync(songs[songid], vnc.SendAsync);
+                const string format = "flac";
+
+                stopped = false;
+
+                var info = (await youtubedl.GetUrlInfoStructs(url))[0];
+
+                var file = Path.Combine(config.Voice.Download.DownloadLocation,
+                    string.Format(YoutubeDLWrapper.YTDLInfoStruct.NameFormat, info.EntryID, info.ExtractorName) + "." + format);
+
+                bool useLocalFile = File.Exists(file);
+
+                ffwrap = new FFMpegWrapper(ffmpegLoc);
+
+                if (useLocalFile)
+                    ffwrap.Input = new FFMpegWrapper.FileInput(config.Voice.Download.DownloadLocation,
+                        string.Format(YoutubeDLWrapper.YTDLInfoStruct.NameFormat, info.EntryID, info.ExtractorName) + "." + format);
+                else
+                {
+                    ytdlPipe = new BufferedPipe { BlockSize = 8192 }; // literally just piping from ytdl to ffmpeg
+                    ffwrap.Input = new FFMpegWrapper.PipeInput(ytdlPipe);
+                    ffwrap.Outputs += new FFMpegWrapper.FileOutput(config.Voice.Download.DownloadLocation,
+                        string.Format(YoutubeDLWrapper.YTDLInfoStruct.NameFormat, info.EntryID, info.ExtractorName) + "." + format,
+                        format) { Options = "-ac 2 -ar 64k" };
+                }
+
+                var bpipe = new BufferedPipe { BlockSize = 3840 };
+                bpipe.Outputs += new DiscordVoiceStream(vnc) { BlockSize = 3840, BlockLength = 20};
+                ffwrap.Outputs += new FFMpegWrapper.PipeOutput(bpipe, "s16le") { Options = "-ac 2 -ar 48k" };
+                ffwrap.Start();
+                if (!useLocalFile) await youtubedl.StreamInItem(info, ytdlPipe);
+                await bpipe.AwaitEndOfStream;
+                await ffwrap.AwaitProcessEnd;
+
+                ytdlPipe = null;
+                ffwrap = null;
+
+                if (stopped)
+                    File.Delete(file);
             }
             catch (Exception e)
             {
+                ytdlPipe = null;
+                ffwrap = null;
+
                 await ctx.ErrorWith(bot, "Error playing audio", "PlayUsing() threw an error", ($"{e.GetType().Name} in {e.TargetSite.Name}", e.Message));
                 return;
             }
@@ -102,7 +147,9 @@ namespace DSharpBotCore.Modules
 
             try
             {
-                await ffstream.Stop();
+                stopped = true;
+                if (ytdlPipe != null) ytdlPipe.Close();
+                if (ffwrap != null) await ffwrap.Stop();
             }
             catch (Exception e)
             {
@@ -122,9 +169,8 @@ namespace DSharpBotCore.Modules
                 await ctx.ErrorWith(bot, "Error disconnecting from voice", "Not currently connected");
                 return;
             }
-            
-            if (ffstream.IsPlaying)
-                await ffstream.Stop();
+
+            await Stop(ctx);
 
             vnc.Disconnect();
             await ctx.RespondAsync("👌");

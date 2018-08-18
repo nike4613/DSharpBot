@@ -11,6 +11,7 @@ using DSharpBotCore.Entities;
 using System.Threading;
 using DSharpPlus.VoiceNext;
 using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
 
 namespace DSharpBotCore
 {
@@ -32,11 +33,11 @@ namespace DSharpBotCore
             Console.WriteLine(value);
         }
 
-        public Bot()
+        public Bot(string confingFile = "config.json")
         {
             try
             {
-                Config = LoadConfiguration("config.json");
+                Config = LoadConfiguration(confingFile);
 
                 if (Config.Token == null)
                     throw new ArgumentException("Bot token is null!");
@@ -87,6 +88,8 @@ namespace DSharpBotCore
                 #endregion
             }
 
+            Environment.SetEnvironmentVariable("PATH", Environment.GetEnvironmentVariable("PATH") + ";" + Config.LibraryPath);
+
             Client = new DiscordClient(new DiscordConfiguration
             {
                 Token = Config.Token,
@@ -114,9 +117,9 @@ namespace DSharpBotCore
                     .AddSingleton(CTS)
                     .AddSingleton(Client)
                     .AddSingleton(Interactivity)
-                    .AddSingleton(Voice)
                     .AddSingleton<DownloadManager>()
                     .AddSingleton(this);
+            if (Config.Voice.Enabled) services.AddSingleton(Voice);
 
             var serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions()
             {
@@ -154,9 +157,10 @@ namespace DSharpBotCore
 
         private readonly string Author = "nike4613";
         private readonly string ProjectName = "DSharpBotCore";
-        private readonly Version Version = new Version(0, 1, 0, 0);
+        private readonly Version Version = Assembly.GetExecutingAssembly().GetName().Version;
         public async Task RunAsync()
         {
+
             Client.DebugLogger.LogMessage(LogLevel.Info, Config.Name, $"Starting {Config.Name} ({Author}/{ProjectName} {Version})", DateTime.Now);
 
             await Client.ConnectAsync();

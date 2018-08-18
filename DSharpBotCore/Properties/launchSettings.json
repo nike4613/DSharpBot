@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "DSharpBotCore": {
+      "commandName": "Project",
+      "commandLineArgs": "icons.json"
+    }
+  }
+}

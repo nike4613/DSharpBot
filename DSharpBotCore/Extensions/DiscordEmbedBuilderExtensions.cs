@@ -24,5 +24,13 @@ namespace DSharpBotCore.Extensions
                     icon_url: author.AvatarUrl
                 );
         }
+
+        public static DiscordEmbedBuilder WithMemberAsAuthor(this DiscordEmbedBuilder builder, DiscordMember author)
+        {
+            return builder.WithAuthor(
+                    name: author.Nickname,
+                    icon_url: author.AvatarUrl
+                );
+        }
     }
 }

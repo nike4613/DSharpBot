@@ -9,6 +9,7 @@ using System.Linq;
 using DSharpBotCore.Extensions;
 using DSharpBotCore.Entities;
 using System.Threading;
+using org.mariuszgromada.math.mxparser;
 
 namespace DSharpBotCore.Modules
 {
@@ -38,7 +39,7 @@ namespace DSharpBotCore.Modules
         public async Task Poll(CommandContext ctx, 
             [Description("The time length of the poll.")] TimeSpan duration,
             [Description("The text to show in the poll, followed by ';;' then a ';' seperated repsonses to listen for.")]
-            [RemainingText] string pollText = null)
+            [RemainingText] string pollText)
         {
             // Init info
             await ctx.TriggerTypingAsync();
@@ -46,6 +47,8 @@ namespace DSharpBotCore.Modules
             var pollAuthor = ctx.Message.Author;
             if (config.Commands.Poll.DeleteTrigger)
                 await ctx.Message.DeleteAsync("Removing message to keep logs clear");
+
+            var pollAuthMember = await ctx.Guild.GetMemberAsync(pollAuthor.Id);
 
             if (pollText == null)
             {
@@ -71,12 +74,14 @@ namespace DSharpBotCore.Modules
                 return;
             }
 
+            var description = $"{text}\n\nSay your response in this chat to vote!\nYou have **{{0}}**";
+
             // Construct embed
             var embed = new DiscordEmbedBuilder()
                 .WithTitle("Poll time!")
-                .WithDescription($"{text}\n\nSay your response in this chat to vote!\nYou have **{duration.ToReadable()}**")
+                .WithDescription(String.Format(description, duration.ToReadable()))
                 .WithColor(DiscordColor.Aquamarine)
-                .WithUserAsAuthor(pollAuthor)
+                .WithMemberAsAuthor(pollAuthMember)
                 .WithDefaultFooter(bot);
 
             string descformat = "Respond with `{0}` to vote!\n**Votes:** `{1}`";
@@ -97,9 +102,11 @@ namespace DSharpBotCore.Modules
                 );
             }
 
+            var startTime = DateTime.Now;
+
             // Send message and wait for responses
             var message = await ctx.RespondAsync(embed: embed);
-            await interactivity.WaitForMessageAsync((msg) =>
+            var messageTask = interactivity.WaitForMessageAsync((msg) =>
             {
                 var cont = optionTransform(msg.Content);
                 if (responses.ContainsKey(cont))
@@ -108,6 +115,11 @@ namespace DSharpBotCore.Modules
                     Votes++;
                     responses[cont] = (Votes, Index);
                     embed.Fields[Index].Value = String.Format(descformat, cont, responses[cont].Votes);
+
+                    var elapsed = DateTime.Now - startTime;
+                    var remaining = duration - elapsed;
+                    embed.Description = String.Format(description, remaining.ToReadable());
+                    
                     message.ModifyAsync(embed: embed.Build());
 
                     if (config.Commands.Poll.DeleteResponses)
@@ -116,12 +128,24 @@ namespace DSharpBotCore.Modules
                 return false; // never accept message
             }, duration);
 
+            if (config.Commands.Poll.UpdateTime)
+                while (!messageTask.Wait(TimeSpan.FromSeconds(5)))
+                { // tick every second
+                    var elapsed = DateTime.Now - startTime;
+                    var remaining = duration - elapsed;
+                    embed.Description = String.Format(description, remaining.ToReadable());
+
+                    var task = message.ModifyAsync(embed: embed.Build());
+                }
+            else
+                await messageTask;
+
             // Process results
             await ctx.TriggerTypingAsync();
             var resultsEmbed = new DiscordEmbedBuilder()
                 .WithTitle($"The results for `{text}` are in!")
                 .WithColor(DiscordColor.Cyan)
-                .WithUserAsAuthor(pollAuthor)
+                .WithMemberAsAuthor(pollAuthMember)
                 .WithDefaultFooter(bot);
 
             int totalVotes = responses.Values.Aggregate((a, b) => (a.Votes + b.Votes, -1)).Votes;
@@ -176,6 +200,17 @@ namespace DSharpBotCore.Modules
             await ctx.ErrorWith(bot, "Not enough options were provided.", "No poll time was provided.", (null, "Argument 1 (duration) wasn't provided."));
         }
 
+        [Command("poll")]
+        [Priority(0)]
+        [RequirePermissions(DSharpPlus.Permissions.Administrator)]
+        public async Task PollNoTimespan(CommandContext ctx, [RemainingText] string pollText)
+        {
+            await ctx.TriggerTypingAsync();
+            if (config.Commands.Poll.DeleteTrigger)
+                await ctx.Message.DeleteAsync("Removing message to keep logs clear");
+            await ctx.ErrorWith(bot, "Not enough options were provided.", "No poll time was provided.", (null, "Argument 1 (duration) wasn't provided."));
+        }
+
         [Command("d6")]
         [Description("Alias for `roll 6`")]
         public async Task RollD6(CommandContext ctx, 
@@ -192,6 +227,8 @@ namespace DSharpBotCore.Modules
             if (config.Commands.Roll.DeleteTrigger)
                 await ctx.Message.DeleteAsync();
 
+            var authMember = await ctx.Guild.GetMemberAsync(ctx.Message.Author.Id);
+
             if (faces == null)
             {
                 await ctx.ErrorWith(bot, "Not enough options were provided.", "Number of faces was not specified.", (null, "Argument 1 (faces) wasn't provided."));
@@ -199,7 +236,7 @@ namespace DSharpBotCore.Modules
             }
 
             var embed = new DiscordEmbedBuilder()
-                .WithUserAsAuthor(ctx.Message.Author)
+                .WithMemberAsAuthor(authMember)
                 .WithDefaultFooter(bot)
                 .WithTitle($"Rolling {number}d{faces}");
 
@@ -210,8 +247,56 @@ namespace DSharpBotCore.Modules
 
             var random = new Random();
             var results = Enumerable.Repeat(0, number).Select(_ => random.Next(1, faces.Value + 1)).ToArray();
+            var sum = results.Sum();
 
-            embed.Description = $"The results: {results.Select(x => $"`{x}`").MakeReadableString()}.\nThe sum: `{results.Sum()}`.";
+            embed.Description = $"The results: {results.Select(x => $"`{x}`").MakeReadableString()}.\nThe sum: `{sum}`.";
+
+            if (!userLastResults.ContainsKey(authMember))
+                userLastResults.Add(authMember, sum);
+            else
+                userLastResults[authMember] = sum;
+
+            await ctx.RespondAsync(embed: embed);
+        }
+
+        private Dictionary<DiscordMember, double> userLastResults = new Dictionary<DiscordMember, double>();
+        [Command("calc"), Aliases("c")]
+        [Description("Evaluates a provided expression")]
+        public async Task EvalExpression(CommandContext ctx,
+            [Description("The expression to evaluate"), RemainingText] string expr)
+        {
+            await ctx.TriggerTypingAsync();
+
+            if (config.Commands.Calc.DeleteTrigger)
+                await ctx.Message.DeleteAsync();
+
+            var exprObj = new Expression(expr);
+            var authMember = await ctx.Guild.GetMemberAsync(ctx.Message.Author.Id);
+
+            if (userLastResults.ContainsKey(authMember))
+            {
+                exprObj.defineConstant("x", userLastResults[authMember]);
+            }
+
+            if (!exprObj.checkSyntax())
+            {
+                await ctx.ErrorWith(bot, "Invalid expression syntax", exprObj.getErrorMessage());
+                return;
+            }
+
+            var embed = new DiscordEmbedBuilder()
+                .WithMemberAsAuthor(authMember)
+                .WithDefaultFooter(bot)
+                .WithTitle($"Expression `{exprObj.getExpressionString()}`");
+
+            var result = exprObj.calculate();
+
+            if (!userLastResults.ContainsKey(authMember))
+                userLastResults.Add(authMember, result);
+            else
+                userLastResults[authMember] = result;
+
+            embed.Description = $"`{exprObj.getExpressionString()} = {result}`";
 
             await ctx.RespondAsync(embed: embed);
         }

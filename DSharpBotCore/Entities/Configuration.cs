@@ -24,6 +24,9 @@ namespace DSharpBotCore.Entities
         [JsonProperty("logLevel", Required = Required.DisallowNull), JsonConverter(typeof(StringEnumConverter), false)]
         public LogLevel LogLevel = LogLevel.Warning;
 
+        [JsonProperty("libraryPath", Required = Required.DisallowNull)]
+        public string LibraryPath = "libs";
+
         public class ErrorsObject
         {
             [JsonProperty("persist", Required = Required.DisallowNull), JsonConverter(typeof(TimeSpanConverter))]
@@ -73,21 +76,27 @@ namespace DSharpBotCore.Entities
             public bool Enabled = false;
 
             [JsonProperty("ffmpegLocation", Required = Required.DisallowNull)]
-            public string FFMpegLocation = "ffmpeg";
+            public string FFMpegLocation = "libs/ffmpeg";
 
             public class DownloadObject
             {
-                [JsonProperty("format", Required = Required.DisallowNull), JsonConverter(typeof(StringEnumConverter), false)]
-                public NYoutubeDL.Helpers.Enums.AudioFormat Format = NYoutubeDL.Helpers.Enums.AudioFormat.wav;
+                /*[JsonProperty("format", Required = Required.DisallowNull), JsonConverter(typeof(StringEnumConverter), false)]
+                public NYoutubeDL.Helpers.Enums.AudioFormat Format = NYoutubeDL.Helpers.Enums.AudioFormat.wav;*/
 
                 [JsonProperty("ydlLocation", Required = Required.DisallowNull)]
-                public string YoutubeDlLocation = "youtube-dl";
+                public string YoutubeDlLocation = "libs/youtube-dl";
+
+                /*[JsonProperty("ffprobeLocation", Required = Required.DisallowNull)]
+                public string FFProbeLocation = "libs/ffprobe";*/
 
                 [JsonProperty("downloadLocation", Required = Required.DisallowNull)]
                 public string DownloadLocation = "audio";
+
+                [JsonProperty("logLevel", Required = Required.DisallowNull), JsonConverter(typeof(StringEnumConverter), false)]
+                public LogLevel LogLevel = LogLevel.Info;
             }
 
-            [JsonProperty("voice", Required = Required.DisallowNull)]
+            [JsonProperty("download", Required = Required.DisallowNull)]
             public DownloadObject Download = new DownloadObject();
         }
 
@@ -124,6 +133,9 @@ namespace DSharpBotCore.Entities
 
                 [JsonProperty("deleteResponses", Required = Required.DisallowNull)]
                 public bool DeleteResponses = true;
+
+                [JsonProperty("updateTime", Required = Required.DisallowNull)]
+                public bool UpdateTime = true;
 
                 // unused for a number of reasons
                 [JsonProperty("textSeperator", Required = Required.DisallowNull)]
@@ -163,6 +175,15 @@ namespace DSharpBotCore.Entities
 
             [JsonProperty("roll", Required = Required.DisallowNull)]
             public RollObject Roll = new RollObject();
+
+            public class CalcObject
+            {
+                [JsonProperty("deleteTrigger", Required = Required.DisallowNull)]
+                public bool DeleteTrigger = true;
+            }
+
+            [JsonProperty("calc", Required = Required.DisallowNull)]
+            public CalcObject Calc = new CalcObject();
         }
 
         [JsonProperty("commands", Required = Required.DisallowNull)]

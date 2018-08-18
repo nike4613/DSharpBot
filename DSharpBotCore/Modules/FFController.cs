@@ -70,7 +70,7 @@ namespace DSharpBotCore.Modules
                 RedirectStandardOutput = true,
                 UseShellExecute = false
             };
-            var ffproc = Process.Start(ffinfo);
+            ffproc = Process.Start(ffinfo);
             var ffout = ffproc.StandardOutput.BaseStream;
 
             var buff = new byte[3840];
@@ -89,7 +89,7 @@ namespace DSharpBotCore.Modules
                 ffproc.Kill();
         }
 
-        public Task PlayUsingAsync(string source, PlayBuffer player) => (PlayerTask = _PlayUsingAsync(source, player));
+        public async Task PlayUsingAsync(string source, PlayBuffer player) => await (PlayerTask = _PlayUsingAsync(source, player));
 
         public Task PlayUsing(string source, PlayBuffer player) => PlayUsingAsync(source, player);
 
@@ -98,6 +98,8 @@ namespace DSharpBotCore.Modules
             if (!IsPlaying)
                 throw new InvalidOperationException("FFController is not currently playing anything!");
             cancel.Cancel();
+            if (!PlayerTask.Wait(TimeSpan.FromSeconds(1)))
+                ffproc.Kill();
             await PlayerTask;
         }
         public void StopAfter(TimeSpan delay)

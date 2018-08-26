@@ -93,7 +93,7 @@ namespace DSharpBotCore
                 WriteCenter("▒▒█▓▓██▀▀▀▒▒▒▀▄▄█▀▒▒");
                 WriteCenter("▒▒▒▀▀▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒");
 
-                var endY = Console.CursorTop;
+                var endY = Console.CursorTop + 2;
 
                 Console.BackgroundColor = ConsoleColor.Black;
                 Console.ForegroundColor = ConsoleColor.Black;

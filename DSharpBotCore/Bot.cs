@@ -52,13 +52,13 @@ namespace DSharpBotCore
                 {
                     Console.SetWindowPosition(0, 0);
                     Console.SetWindowSize(width, height);
+                    Console.SetBufferSize(width, height);
                 }
                 catch (PlatformNotSupportedException)
                 {
                     // do nothing
                 }
 
-                Console.SetBufferSize(width, height);
                 Console.SetCursorPosition(1, 1);
                 Console.ForegroundColor = ConsoleColor.Red;
                 WriteCenter(e.Message);

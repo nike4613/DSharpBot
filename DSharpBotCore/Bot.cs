@@ -48,30 +48,34 @@ namespace DSharpBotCore
                 const int width = 120, height = 24;
 
                 #region Pretty error!
+
+                Console.WriteLine();
                 try
                 {
                     Console.SetWindowPosition(0, 0);
                     Console.SetWindowSize(width, height);
                     Console.SetBufferSize(width, height);
+                    Console.SetCursorPosition(1,1);
                 }
                 catch (PlatformNotSupportedException)
                 {
                     // do nothing
                 }
+                var startY = Console.CursorTop;
 
-                Console.SetCursorPosition(1, 1);
+                Console.SetCursorPosition(1, startY);
                 Console.ForegroundColor = ConsoleColor.Red;
                 WriteCenter(e.Message);
                 Console.BackgroundColor = ConsoleColor.Black;
                 Console.ForegroundColor = ConsoleColor.Black;
-                Console.SetCursorPosition(1, height - 2); // last 2 lines
+                Console.SetCursorPosition(1, startY + height - 3); // last 2 lines
                 Console.ForegroundColor = ConsoleColor.Yellow;
                 WriteCenter("Uh-oh! Looks like something went horribly wrong when reading the config file!");
                 WriteCenter("Please fix it and try again.");
                 Console.BackgroundColor = ConsoleColor.Black;
                 Console.ForegroundColor = ConsoleColor.Black;
 
-                Console.SetCursorPosition(1, height - 17);
+                Console.SetCursorPosition(1, startY + height - 18);
                 Console.BackgroundColor = ConsoleColor.Red;
                 Console.ForegroundColor = ConsoleColor.Black;
                 WriteCenter("▒▒▒▒▒▒▒▒▒▄▄▄▄▒▒▒▒▒▒▒");
@@ -89,10 +93,17 @@ namespace DSharpBotCore
                 WriteCenter("▒▒█▓▓██▀▀▀▒▒▒▀▄▄█▀▒▒");
                 WriteCenter("▒▒▒▀▀▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒");
 
+                var endY = Console.CursorTop;
+
                 Console.BackgroundColor = ConsoleColor.Black;
                 Console.ForegroundColor = ConsoleColor.Black;
-                Console.SetCursorPosition(1, 1);
+                Console.SetCursorPosition(1, startY);
                 Console.ReadKey();
+
+                Console.ResetColor();
+                Console.SetCursorPosition(1, endY);
+
+                Console.WriteLine();
                 Environment.Exit(1);
                 #endregion
             }

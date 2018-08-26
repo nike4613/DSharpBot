@@ -48,8 +48,16 @@ namespace DSharpBotCore
                 const int width = 120, height = 24;
 
                 #region Pretty error!
-                Console.SetWindowPosition(0, 0);
-                Console.SetWindowSize(width, height);
+                try
+                {
+                    Console.SetWindowPosition(0, 0);
+                    Console.SetWindowSize(width, height);
+                }
+                catch (PlatformNotSupportedException)
+                {
+                    // do nothing
+                }
+
                 Console.SetBufferSize(width, height);
                 Console.SetCursorPosition(1, 1);
                 Console.ForegroundColor = ConsoleColor.Red;

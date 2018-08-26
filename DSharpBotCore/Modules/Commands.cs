@@ -57,7 +57,7 @@ namespace DSharpBotCore.Modules
             }
 
             // Parse arguments
-            string[] textParts = Array.ConvertAll(pollText.Split(";;", StringSplitOptions.RemoveEmptyEntries), s=>s.Trim());
+            string[] textParts = Array.ConvertAll(pollText.Split(new string[] { ";;" }, StringSplitOptions.RemoveEmptyEntries), s=>s.Trim());
 
             if (textParts.Length < 2)
             { // Show error message for configured time
@@ -66,7 +66,7 @@ namespace DSharpBotCore.Modules
             }
 
             var text = textParts[0];
-            var options = Array.ConvertAll(textParts[1].Split(";", StringSplitOptions.RemoveEmptyEntries), s=>s.Trim());
+            var options = Array.ConvertAll(textParts[1].Split(new string[] { ";" }, StringSplitOptions.RemoveEmptyEntries), s=>s.Trim());
 
             if (options.Length < 1)
             {

@@ -2,6 +2,7 @@
 using DSharpPlus.CommandsNext;
 using DSharpPlus.EventArgs;
 using DSharpPlus.Interactivity;
+using DSharpPlus.Net.WebSocket;
 using Newtonsoft.Json;
 using System;
 using System.IO;

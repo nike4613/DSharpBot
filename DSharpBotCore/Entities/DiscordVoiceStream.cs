@@ -50,6 +50,21 @@ namespace DSharpBotCore.Entities
         public int BlockSize { get => blockSz; set => blockSz = value; }
         public int BlockLength { get => blockLen; set => blockLen = value; }
 
+        private double volume = 1;
+        public double Volume { get => volume; set => volume = value; }
+
+        private double mult_cache = -1;
+        private double Multiplier
+        {
+            get
+            {
+                if (mult_cache == -1)
+                    mult_cache = (Math.Pow(10d, volume) - 1) / 9d;
+
+                return mult_cache; // 卍
+            }
+        }
+
         public override void Write(byte[] buffer, int offset, int count)
         {
             byte[] data = new byte[blockSz];
@@ -62,6 +77,9 @@ namespace DSharpBotCore.Entities
                 if (seglen < data.Length) // not a full sample, mute the rest
                     for (var i = seglen; i < data.Length; i++)
                         data[i] = 0;
+                
+                for (var i = 0; i < data.Length; i++) // apply volume multiplier
+                    data[i] = (byte)(data[i] * Multiplier);
 
                 vnext.SendAsync(data, blockLen, 16).Wait();
             }

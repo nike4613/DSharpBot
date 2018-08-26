@@ -13,7 +13,7 @@ namespace DSharpBotCore.Extensions
                 .WithTimestamp(DateTime.Now)
                 .WithFooter(
                     text: bot.Config.Name,
-                    icon_url: bot.Client.CurrentUser.AvatarUrl
+                    iconUrl: bot.Client.CurrentUser.AvatarUrl
                 );
         }
 
@@ -21,7 +21,7 @@ namespace DSharpBotCore.Extensions
         {
             return builder.WithAuthor(
                     name: author.Username,
-                    icon_url: author.AvatarUrl
+                    iconUrl: author.AvatarUrl
                 );
         }
 
@@ -29,7 +29,7 @@ namespace DSharpBotCore.Extensions
         {
             return builder.WithAuthor(
                     name: author.Nickname,
-                    icon_url: author.AvatarUrl
+                    iconUrl: author.AvatarUrl
                 );
         }
     }

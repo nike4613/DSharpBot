@@ -98,6 +98,9 @@ namespace DSharpBotCore.Entities
 
             [JsonProperty("download", Required = Required.DisallowNull)]
             public DownloadObject Download = new DownloadObject();
+
+            [JsonProperty("defaultVolume", Required = Required.DisallowNull)]
+            public double DefaultVolume = 1;
         }
 
         [JsonProperty("voice", Required = Required.DisallowNull)]

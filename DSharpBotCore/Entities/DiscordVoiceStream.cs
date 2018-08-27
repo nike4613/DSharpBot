@@ -51,7 +51,7 @@ namespace DSharpBotCore.Entities
         public int BlockLength { get => blockLen; set => blockLen = value; }
 
         private double volume = 1;
-        public double Volume { get => volume; set => volume = value; }
+        public double Volume { get => volume; set { volume = value; mult_cache = -1; } }
 
         private double mult_cache = -1;
         private double Multiplier
@@ -78,8 +78,15 @@ namespace DSharpBotCore.Entities
                     for (var i = seglen; i < data.Length; i++)
                         data[i] = 0;
                 
-                for (var i = 0; i < data.Length; i++) // apply volume multiplier
-                    data[i] = (byte)(data[i] * Multiplier);
+                unsafe
+                {
+                    fixed (byte* data_ptr = data)
+                    {
+                        short* sharr = (short*)data_ptr;
+                        for (int i = 0; i < data.Length / 2; i++)
+                            sharr[i] = (short)(sharr[i] * Multiplier);
+                    }
+                }
 
                 vnext.SendAsync(data, blockLen, 16).Wait();
             }

@@ -3,6 +3,7 @@ using DSharpBotCore.Entities.Managers;
 using DSharpBotCore.Extensions;
 using DSharpPlus.CommandsNext;
 using DSharpPlus.CommandsNext.Attributes;
+using DSharpPlus.Entities;
 using DSharpPlus.VoiceNext;
 using System;
 using System.Collections.Generic;
@@ -27,12 +28,16 @@ namespace DSharpBotCore.Modules
             this.manager = manager;
             youtubedl = new YoutubeDLWrapper(config.Voice.Download.YoutubeDlLocation);
             ffmpegLoc = config.Voice.FFMpegLocation;
+            volume = config.Voice.DefaultVolume;
         }
 
         YoutubeDLWrapper youtubedl;
-        string ffmpegLoc;
+        readonly string ffmpegLoc;
         FFMpegWrapper ffwrap;
         BufferedPipe ytdlPipe;
+        DiscordVoiceStream dvStream;
+
+        double volume;
 
         [Command("join"), Description("Joins the user's voice channel.")]
         public async Task Join(CommandContext ctx)
@@ -108,7 +113,7 @@ namespace DSharpBotCore.Modules
                 }
 
                 var bpipe = new BufferedPipe { BlockSize = 3840 };
-                bpipe.Outputs += new DiscordVoiceStream(vnc) { BlockSize = 3840, BlockLength = 20};
+                bpipe.Outputs += dvStream = new DiscordVoiceStream(vnc) { BlockSize = 3840, BlockLength = 20, Volume = volume };
                 ffwrap.Outputs += new FFMpegWrapper.PipeOutput(bpipe, "s16le") { Options = "-ac 2 -ar 48k" };
                 ffwrap.Start();
                 if (!useLocalFile) await youtubedl.StreamInItem(info, ytdlPipe);
@@ -117,6 +122,7 @@ namespace DSharpBotCore.Modules
 
                 ytdlPipe = null;
                 ffwrap = null;
+                dvStream = null;
 
                 if (stopped)
                     File.Delete(file);
@@ -131,6 +137,41 @@ namespace DSharpBotCore.Modules
             }
 
             await vnc.SendSpeakingAsync(false); // we're not speaking anymore
+        }
+
+        [Command("volume"), Description("Gets or sets the volume"), Priority(0)]
+        public async Task GetVolume(CommandContext ctx)
+        {
+            await ctx.TriggerTypingAsync();
+
+            if (config.Commands.Roll.DeleteTrigger)
+                await ctx.Message.DeleteAsync();
+
+            var authMember = await ctx.Guild.GetMemberAsync(ctx.Message.Author.Id);
+
+            await ctx.RespondAsync($"The current volume is **{volume:p}**");
+        }
+
+        [Command("volume"), Description("Gets or sets the volume"), Priority(1)]
+        public async Task SetVolume(CommandContext ctx, [Description("The new volume out of 100")] double newvol)
+        {
+            await ctx.TriggerTypingAsync();
+
+            if (config.Commands.Roll.DeleteTrigger)
+                await ctx.Message.DeleteAsync();
+
+            var authMember = await ctx.Guild.GetMemberAsync(ctx.Message.Author.Id);
+
+            if (newvol < 0 || newvol > 100)
+            {
+                await ctx.ErrorWith(bot, "Volume out of range", "Number must be between 0 and 100!");
+                return;
+            }
+
+            volume = newvol / 100f;
+            if (dvStream != null) dvStream.Volume = volume;
+
+            await ctx.RespondAsync($"The current volume is now **{volume:p}**");
         }
 
         [Command("stop"), Description("Leaves the voice channel.")]

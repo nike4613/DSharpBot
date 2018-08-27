@@ -51,7 +51,7 @@ namespace DSharpBotCore.Entities.Managers
                 string line;
                 while ((line = reader.ReadLine()) != null) // line should be json
                 {
-                    Console.WriteLine(line);
+                    Console.WriteLine("Got JSON Line");
                     infos.Add(JsonConvert.DeserializeObject<YTDLInfoStruct>(line));
                 }
             });

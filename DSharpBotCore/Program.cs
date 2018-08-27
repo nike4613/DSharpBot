@@ -18,7 +18,7 @@ namespace DSharpBotCore
         internal static Configuration Config { get { return Bot.Config; } } // static accessor for config
         // ~~more things than should rely on the above~~
 
-        static void Main(string[] args) => 
-            (Bot = args.Length > 0 ? new Bot(args[0]) : new Bot()).RunAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+        static void Main(string[] args) =>
+            (Bot = args.Length > 0 ? new Bot(args[0]) : new Bot()).RunAsync().Wait();
     }
 }

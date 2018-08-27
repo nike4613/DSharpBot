@@ -118,6 +118,15 @@ namespace DSharpBotCore
                 LogLevel = Config.LogLevel,
                 AutoReconnect = Config.Connection.AutoReconnect,
             });
+            
+            Console.CancelKeyPress += (object sender, ConsoleCancelEventArgs ev) =>
+            {
+                ev.Cancel = true;
+
+                Client.DebugLogger.LogMessage(LogLevel.Info, Config.Name, "Stopping due to CancelKeyPress", DateTime.Now);
+
+                CTS.Cancel();
+            };
 
             Interactivity = Client.UseInteractivity(new InteractivityConfiguration
             {
@@ -186,8 +195,7 @@ namespace DSharpBotCore
             await Client.ConnectAsync();
 
             // Stay alive
-            while (!CTS.IsCancellationRequested)
-                await Task.Delay(500);
+            CTS.Token.WaitHandle.WaitOne();
 
             await Client.DisconnectAsync();
 

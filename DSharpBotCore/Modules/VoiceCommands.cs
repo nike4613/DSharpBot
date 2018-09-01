@@ -37,6 +37,7 @@ namespace DSharpBotCore.Modules
         BufferedPipe ytdlPipe;
         DiscordVoiceStream dvStream;
 
+        bool earRape = false;
         double volume;
 
         [Command("join"), Description("Joins the user's voice channel.")]
@@ -113,7 +114,7 @@ namespace DSharpBotCore.Modules
                 }
 
                 var bpipe = new BufferedPipe { BlockSize = 3840 };
-                bpipe.Outputs += dvStream = new DiscordVoiceStream(vnc) { BlockSize = 3840, BlockLength = 20, Volume = volume };
+                bpipe.Outputs += dvStream = new DiscordVoiceStream(vnc) { BlockSize = 3840, BlockLength = 20, Volume = volume, UseEarRapeVolumeMode = earRape };
                 ffwrap.Outputs += new FFMpegWrapper.PipeOutput(bpipe, "s16le") { Options = "-ac 2 -ar 48k" };
                 ffwrap.Start();
                 if (!useLocalFile) await youtubedl.StreamInItem(info, ytdlPipe);
@@ -172,6 +173,43 @@ namespace DSharpBotCore.Modules
             if (dvStream != null) dvStream.Volume = volume;
 
             await ctx.RespondAsync($"The current volume is now **{volume:p}**");
+        }
+
+        [Command("earrape"), Description("Gets or sets ear rape mode"), Priority(0)]
+        public async Task GetEarRapeMode(CommandContext ctx)
+        {
+            await ctx.TriggerTypingAsync();
+
+            if (config.Commands.Roll.DeleteTrigger)
+                await ctx.Message.DeleteAsync();
+
+            var authMember = await ctx.Guild.GetMemberAsync(ctx.Message.Author.Id);
+
+            await ctx.RespondAsync($"Ear rape mode is currently **{(earRape ? "on" : "off")}**");
+        }
+
+        [Command("earrape"), Description("Gets or sets ear rape mode"), Priority(1)]
+        public async Task SetEarRape(CommandContext ctx, [Description("The new state, as in 'on' or 'off'")] string sNewState)
+        {
+            await SetEarRape(ctx, sNewState.ToLower() == "on");
+        }
+
+        [Command("earrape"), Description("Gets or sets ear rape mode"), Priority(2)]
+        public async Task SetEarRape(CommandContext ctx, [Description("The new state")] bool newState)
+        {
+            await ctx.TriggerTypingAsync();
+
+            if (config.Commands.Roll.DeleteTrigger)
+                await ctx.Message.DeleteAsync();
+
+            var authMember = await ctx.Guild.GetMemberAsync(ctx.Message.Author.Id);
+            
+            string newStateS = newState ? "on" : "off";
+
+            earRape = newState;
+            if (dvStream != null) dvStream.UseEarRapeVolumeMode = earRape;
+
+            await ctx.RespondAsync($"Ear rape mode is now **{newStateS}**.");
         }
 
         [Command("stop"), Description("Leaves the voice channel.")]

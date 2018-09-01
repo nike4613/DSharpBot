@@ -50,6 +50,8 @@ namespace DSharpBotCore.Entities
         public int BlockSize { get => blockSz; set => blockSz = value; }
         public int BlockLength { get => blockLen; set => blockLen = value; }
 
+        public bool UseEarRapeVolumeMode { get; set; } = false;
+
         private double volume = 1;
         public double Volume { get => volume; set { volume = value; mult_cache = -1; } }
 
@@ -82,9 +84,17 @@ namespace DSharpBotCore.Entities
                 {
                     fixed (byte* data_ptr = data)
                     {
-                        short* sharr = (short*)data_ptr;
-                        for (int i = 0; i < data.Length / 2; i++)
-                            sharr[i] = (short)(sharr[i] * Multiplier);
+                        if (UseEarRapeVolumeMode)
+                        {
+                            for (int i = 0; i < data.Length; i++)
+                                data_ptr[i] = (byte)(data_ptr[i] * Multiplier);
+                        }
+                        else
+                        {
+                            short* sharr = (short*)data_ptr;
+                            for (int i = 0; i < data.Length / 2; i++)
+                                sharr[i] = (short)(sharr[i] * Multiplier);
+                        }
                     }
                 }
 

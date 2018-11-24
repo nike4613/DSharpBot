@@ -1,8 +1,6 @@
 ﻿using DSharpPlus.VoiceNext;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
 
 namespace DSharpBotCore.Entities
 {
@@ -50,20 +48,20 @@ namespace DSharpBotCore.Entities
         public int BlockSize { get => blockSz; set => blockSz = value; }
         public int BlockLength { get => blockLen; set => blockLen = value; }
 
-        public bool UseEarRapeVolumeMode { get; set; } = false;
+        public bool UseEarRapeVolumeMode { get; set; }
 
         private double volume = 1;
-        public double Volume { get => volume; set { volume = value; mult_cache = -1; } }
+        public double Volume { get => volume; set { volume = value; _multCache = -1; } }
 
-        private double mult_cache = -1;
+        private double _multCache = -1;
         private double Multiplier
         {
             get
             {
-                if (mult_cache == -1)
-                    mult_cache = (Math.Pow(10d, volume) - 1) / 9d;
+                if (_multCache <= 0)
+                    _multCache = (Math.Pow(10d, volume) - 1) / 9d;
 
-                return mult_cache; // 卍
+                return _multCache; // 卍
             }
         }
 
@@ -82,23 +80,23 @@ namespace DSharpBotCore.Entities
                 
                 unsafe
                 {
-                    fixed (byte* data_ptr = data)
+                    fixed (byte* dataPtr = data)
                     {
                         if (UseEarRapeVolumeMode)
                         {
                             for (int i = 0; i < data.Length; i++)
-                                data_ptr[i] = (byte)(data_ptr[i] * Multiplier);
+                                dataPtr[i] = (byte)(dataPtr[i] * Multiplier);
                         }
                         else
                         {
-                            short* sharr = (short*)data_ptr;
+                            short* sharr = (short*)dataPtr;
                             for (int i = 0; i < data.Length / 2; i++)
                                 sharr[i] = (short)(sharr[i] * Multiplier);
                         }
                     }
                 }
 
-                vnext.SendAsync(data, blockLen, 16).Wait();
+                vnext.SendAsync(data, blockLen).Wait();
             }
         }
     }

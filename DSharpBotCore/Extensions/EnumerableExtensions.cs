@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace DSharpBotCore.Extensions
 {
@@ -10,18 +8,19 @@ namespace DSharpBotCore.Extensions
         public static string MakeReadableString<T>(this IEnumerable<T> self)
         {
             string str = "";
-            int length = self.Count();
+            var enumerable = self.ToList();
+            int length = enumerable.Count();
 
             if (length == 1)
-                str = $"{self.First()}";
+                str = $"{enumerable.First()}";
             else if (length == 2)
-                str = $"{self.ElementAt(0)} and {self.ElementAt(1)}";
+                str = $"{enumerable.ElementAt(0)} and {enumerable.ElementAt(1)}";
             else
                 for (int i = 0; i < length; i++)
                     if (i == length - 1)
-                        str += $"and {self.ElementAt(i)}";
+                        str += $"and {enumerable.ElementAt(i)}";
                     else
-                        str += $"{self.ElementAt(i)}, ";
+                        str += $"{enumerable.ElementAt(i)}, ";
 
             return str;
         }

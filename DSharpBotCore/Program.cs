@@ -1,21 +1,12 @@
-﻿using DSharpPlus;
-using DSharpPlus.CommandsNext;
-using DSharpPlus.EventArgs;
-using DSharpPlus.Interactivity;
-using Newtonsoft.Json;
-using System;
-using System.IO;
-using System.Threading.Tasks;
-using DSharpBotCore.Modules;
-using DSharpBotCore.Entities;
-using System.Threading;
+﻿using DSharpBotCore.Entities;
 
 namespace DSharpBotCore
 {
-    public class Program
+    public static class Program
     {
         public static Bot Bot;
-        internal static Configuration Config { get { return Bot.Config; } } // static accessor for config
+        internal static Configuration Config // static accessor for config
+            => Bot.Config;
         // ~~more things than should rely on the above~~
 
         static void Main(string[] args) =>

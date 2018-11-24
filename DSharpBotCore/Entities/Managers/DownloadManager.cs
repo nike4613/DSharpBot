@@ -1,42 +1,31 @@
-﻿using DSharpPlus;
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using System.Threading.Tasks;
 
-namespace DSharpBotCore.Entities
+namespace DSharpBotCore.Entities.Managers
 {
     public class DownloadManager
     {
         public class DownloadFile
         {
-            protected internal DownloadManager parent;
+            protected internal DownloadManager Parent;
 
-            protected internal UInt64 id;
-            public ulong Id { get { return id; } }
+            protected internal ulong ID;
 
-            protected internal string filename;
-            public string Filename { get { return filename; } }
+            protected internal string Filename;
 
             //protected internal DownloadInfo downloadInfo;
-            protected internal Task downloadTask;
+            protected internal Task DownloadTask;
+            
         }
 
-        private Configuration config;
-        private DiscordClient discordClient;
-        //private YoutubeDLPool dlPool;
-        private string downloadDir;
-        private Dictionary<UInt64, DownloadFile> files = new Dictionary<ulong, DownloadFile>();
+        private readonly Dictionary<ulong, DownloadFile> files = new Dictionary<ulong, DownloadFile>();
 
-        private ulong currentId = 0;
+        private ulong currentId;
 
-        public DownloadManager(Configuration config, DiscordClient dclient)
+        public DownloadManager(Configuration config)
         {
-            discordClient = dclient;
-            this.config = config;
-
-            downloadDir = config.Voice.Download.DownloadLocation;
+            var downloadDir = config.Voice.Download.DownloadLocation;
 
             //dlPool = new YoutubeDLPool(config, dclient, downloadDir);
 
@@ -78,14 +67,14 @@ namespace DSharpBotCore.Entities
             */
             var file = new DownloadFile()
             {
-                parent = this,
-                id = currentId++,
+                Parent = this,
+                ID = currentId++,
             //    filename = @"pipe:" + poolEntry.PipeFilename,
             //    downloadInfo = dlInfo,
             //    downloadTask = dlTask
             };
 
-            files.Add(file.id, file);
+            files.Add(file.ID, file);
 
             return file;
         }

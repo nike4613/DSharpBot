@@ -57,7 +57,7 @@ namespace DSharpBotCore.Modules
             }
 
             // Parse arguments
-            string[] textParts = Array.ConvertAll(pollText.Split(new string[] { ";;" }, StringSplitOptions.RemoveEmptyEntries), s=>s.Trim());
+            string[] textParts = Array.ConvertAll(pollText.Split(new[] { ";;" }, StringSplitOptions.RemoveEmptyEntries), s=>s.Trim());
 
             if (textParts.Length < 2)
             { // Show error message for configured time
@@ -66,7 +66,7 @@ namespace DSharpBotCore.Modules
             }
 
             var text = textParts[0];
-            var options = Array.ConvertAll(textParts[1].Split(new string[] { ";" }, StringSplitOptions.RemoveEmptyEntries), s=>s.Trim());
+            var options = Array.ConvertAll(textParts[1].Split(new[] { ";" }, StringSplitOptions.RemoveEmptyEntries), s=>s.Trim());
 
             if (options.Length < 1)
             {
@@ -86,12 +86,12 @@ namespace DSharpBotCore.Modules
 
             string descformat = "Respond with `{0}` to vote!\n**Votes:** `{1}`";
 
-            string optionTransform(string s) => new string(s.ToLower().Where(c => char.IsLetterOrDigit(c) || c == ' ').ToArray());
+            string OptionTransform(string s) => new string(s.ToLower().Where(c => char.IsLetterOrDigit(c) || c == ' ').ToArray());
 
             var responses = new Dictionary<string, (int Votes, int Index)>();
             foreach (var option in options)
             {
-                var optname = optionTransform(option);
+                var optname = OptionTransform(option);
                 if (!responses.ContainsKey(optname))
                     responses[optname] = (Votes: 0, Index: Array.IndexOf(options, option));
 
@@ -106,19 +106,19 @@ namespace DSharpBotCore.Modules
 
             // Send message and wait for responses
             var message = await ctx.RespondAsync(embed: embed);
-            var messageTask = interactivity.WaitForMessageAsync((msg) =>
+            var messageTask = interactivity.WaitForMessageAsync(msg =>
             {
-                var cont = optionTransform(msg.Content);
+                var cont = OptionTransform(msg.Content);
                 if (responses.ContainsKey(cont))
                 {
-                    var (Votes, Index) = responses[cont];
-                    Votes++;
-                    responses[cont] = (Votes, Index);
-                    embed.Fields[Index].Value = String.Format(descformat, cont, responses[cont].Votes);
+                    var (votes, index) = responses[cont];
+                    votes++;
+                    responses[cont] = (votes, index);
+                    embed.Fields[index].Value = string.Format(descformat, cont, responses[cont].Votes);
 
                     var elapsed = DateTime.Now - startTime;
                     var remaining = duration - elapsed;
-                    embed.Description = String.Format(description, remaining.ToReadable());
+                    embed.Description = string.Format(description, remaining.ToReadable());
                     
                     message.ModifyAsync(embed: embed.Build());
 
@@ -133,9 +133,9 @@ namespace DSharpBotCore.Modules
                 { // tick every second
                     var elapsed = DateTime.Now - startTime;
                     var remaining = duration - elapsed;
-                    embed.Description = String.Format(description, remaining.ToReadable());
+                    embed.Description = string.Format(description, remaining.ToReadable());
 
-                    var task = message.ModifyAsync(embed: embed.Build());
+                    await message.ModifyAsync(embed: embed.Build());
                 }
             else
                 await messageTask;
@@ -161,19 +161,18 @@ namespace DSharpBotCore.Modules
 
                 var first = new List<(int Votes, int Index)>();
 
-                foreach (var (Votes, Index) in ordered)
+                foreach (var (votes, index) in ordered)
                 {
-                    var placement = Array.IndexOf(groups, Votes)+1;
-                    var name = options[Index];
+                    var placement = Array.IndexOf(groups, votes)+1;
+                    var name = options[index];
 
                     if (placement == 1)
-                        first.Add((Votes, Index));
+                        first.Add((votes, index));
 
                     if (placement <= 3) // only show the top 3 places (including duplicate placements)
                         resultsEmbed.AddField(
-                            name: $"#{placement}: `{name}`",
-                            value: $"`{name}` placed #{placement} with `{Votes}` votes!",
-                            inline: false
+                            $"#{placement}: `{name}`",
+                            $"`{name}` placed #{placement} with `{votes}` votes!"
                         );
                     else
                         break;

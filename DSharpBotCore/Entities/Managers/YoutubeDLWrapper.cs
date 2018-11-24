@@ -3,20 +3,20 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace DSharpBotCore.Entities.Managers
 {
     class YoutubeDLWrapper
     {
-        private string ytdlLoc;
+        private readonly string ytdlLoc;
 
         public YoutubeDLWrapper(string location)
         {
             ytdlLoc = location;
         }
 
+        // ReSharper disable once InconsistentNaming
         public struct YTDLInfoStruct
         {
             public const string NameFormat = "{0}.{1}";
@@ -28,7 +28,7 @@ namespace DSharpBotCore.Entities.Managers
             [JsonProperty("webpage_url_basename", Required = Required.Always)]
             public string UrlBasenme; // may be the same as entryID
             [JsonProperty("webpage_url", Required = Required.Always)]
-            public string URL;
+            public string Url;
 
             public override string ToString()
             {
@@ -42,7 +42,7 @@ namespace DSharpBotCore.Entities.Managers
         {
             if (urlInfo.ContainsKey(url))
             {
-                return new YTDLInfoStruct[] { urlInfo[url] };
+                return new[] { urlInfo[url] };
             }
 
             List<YTDLInfoStruct> infos = new List<YTDLInfoStruct>();
@@ -57,14 +57,14 @@ namespace DSharpBotCore.Entities.Managers
             });
 
             foreach (var info in infos)
-                if (!urlInfo.ContainsKey(info.URL)) urlInfo.Add(info.URL, info);
+                if (!urlInfo.ContainsKey(info.Url)) urlInfo.Add(info.Url, info);
 
             return infos.ToArray();
         }
 
         public async Task StreamInItem(YTDLInfoStruct item, BufferedPipe outputPipe)
         {
-            await RunProcess($"-q -f bestaudio -o - {item.URL}", stream =>
+            await RunProcess($"-q -f bestaudio -o - {item.Url}", stream =>
             {
                 outputPipe.Input = stream.BaseStream;
             });
@@ -83,8 +83,9 @@ namespace DSharpBotCore.Entities.Managers
             await Task.Run(delegate
             {
                 var proc = Process.Start(procInfo);
-                recieveOutput(proc.StandardOutput);
-                proc.WaitForExit();
+                Debug.Assert(proc != null, nameof(proc) + " != null");
+                recieveOutput(proc?.StandardOutput);
+                proc?.WaitForExit();
             });
         }
     }

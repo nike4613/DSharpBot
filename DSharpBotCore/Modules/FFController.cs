@@ -1,15 +1,19 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace DSharpBotCore.Modules
 {
-    class FFController
+    // ReSharper disable once InconsistentNaming
+    internal class FFController
     {
+
+        [SuppressMessage("ReSharper", "UnusedMember.Global")]
+        [SuppressMessage("ReSharper", "InconsistentNaming")]
+        // ReSharper disable once InconsistentNaming
         public enum FFLogLevel
         {
             quiet,
@@ -44,17 +48,17 @@ namespace DSharpBotCore.Modules
         /// <summary>
         /// This should be unneccesary, but its here for safety.
         /// </summary>
-        /// <param name="channels"></param>
-        /// <param name="samples"></param>
-        public void SetOptions(int? channels = null, int? samples = null)
+        /// <param name="channel"></param>
+        /// <param name="sample"></param>
+        public void SetOptions(int? channel = null, int? sample = null)
         {
-            this.channels = channels ?? this.channels;
-            this.samples = samples ?? this.samples;
+            channels = channel ?? channels;
+            samples = sample ?? samples;
         }
 
         public delegate Task PlayBuffer(byte[] data, int blockSize, int bitRate);
 
-        private Task PlayerTask;
+        private Task _playerTask;
 
         private async Task _PlayUsingAsync(string source, PlayBuffer player)
         {
@@ -71,25 +75,29 @@ namespace DSharpBotCore.Modules
                 UseShellExecute = false
             };
             ffproc = Process.Start(ffinfo);
-            var ffout = ffproc.StandardOutput.BaseStream;
-
-            var buff = new byte[3840];
-            var br = 0;
-            IsPlaying = true;
-            while (!cancel.IsCancellationRequested && (br = ffout.Read(buff, 0, buff.Length)) > 0)
+            if (ffproc != null)
             {
-                if (br < buff.Length) // not a full sample, mute the rest
-                    for (var i = br; i < buff.Length; i++)
-                        buff[i] = 0;
+                var ffout = ffproc.StandardOutput.BaseStream;
 
-                await player(buff, 20, 16); // This is s16le PCM audio after all
+                var buff = new byte[3840];
+                int br;
+                IsPlaying = true;
+                while (!cancel.IsCancellationRequested && (br = ffout.Read(buff, 0, buff.Length)) > 0)
+                {
+                    if (br < buff.Length) // not a full sample, mute the rest
+                        for (var i = br; i < buff.Length; i++)
+                            buff[i] = 0;
+
+                    await player(buff, 20, 16); // This is s16le PCM audio after all
+                }
             }
+
             IsPlaying = false;
             if (cancel.IsCancellationRequested)
-                ffproc.Kill();
+                ffproc?.Kill();
         }
 
-        public async Task PlayUsingAsync(string source, PlayBuffer player) => await (PlayerTask = _PlayUsingAsync(source, player));
+        public async Task PlayUsingAsync(string source, PlayBuffer player) => await (_playerTask = _PlayUsingAsync(source, player));
 
         public Task PlayUsing(string source, PlayBuffer player) => PlayUsingAsync(source, player);
 
@@ -98,9 +106,9 @@ namespace DSharpBotCore.Modules
             if (!IsPlaying)
                 throw new InvalidOperationException("FFController is not currently playing anything!");
             cancel.Cancel();
-            if (!PlayerTask.Wait(TimeSpan.FromSeconds(1)))
+            if (!_playerTask.Wait(TimeSpan.FromSeconds(1)))
                 ffproc.Kill();
-            await PlayerTask;
+            await _playerTask;
         }
         public void StopAfter(TimeSpan delay)
         {

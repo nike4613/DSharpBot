@@ -1,14 +1,13 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace DSharpBotCore.Entities.Managers
 {
+    // ReSharper disable once InconsistentNaming
     class FFMpegWrapper
     {
         /// <summary>
@@ -29,14 +28,14 @@ namespace DSharpBotCore.Entities.Managers
                 "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
             };
 
-            var sanitisedNamePart = Regex.Replace(filename, invalidReStr, "_");
+            var sanitizedNamePart = Regex.Replace(filename, invalidReStr, "_");
             foreach (var reservedWord in reservedWords)
             {
                 var reservedWordPattern = string.Format("^{0}\\.", reservedWord);
-                sanitisedNamePart = Regex.Replace(sanitisedNamePart, reservedWordPattern, "_reservedWord_.", RegexOptions.IgnoreCase);
+                sanitizedNamePart = Regex.Replace(sanitizedNamePart, reservedWordPattern, "_reservedWord_.", RegexOptions.IgnoreCase);
             }
 
-            return sanitisedNamePart;
+            return sanitizedNamePart;
         }
         private static string CoerceValidFilePath(string filename)
         {
@@ -62,6 +61,7 @@ namespace DSharpBotCore.Entities.Managers
 
         public enum LogLevel
         {
+            // ReSharper disable InconsistentNaming
             quiet,
             panic,
             fatal,
@@ -71,6 +71,7 @@ namespace DSharpBotCore.Entities.Managers
             verbose,
             debug,
             trace,
+            // ReSharper restore InconsistentNaming
         }
 
         public LogLevel MessageLevel { get; set; }
@@ -80,24 +81,17 @@ namespace DSharpBotCore.Entities.Managers
             bool IsPipe { get; }
             string InputString { get; }
 
-            void StdInAvaliable(StreamWriter writer);
+            void StdInAvailiable(StreamWriter writer);
         }
 
         public class PipeInput : IInput
         {
-            private BufferedPipe pipe;
-            public PipeInput(BufferedPipe pipe)
-            {
-                this.pipe = pipe;
-            }
-
             public bool IsPipe => true;
 
             public string InputString => "pipe:"; // pipe from stdin
 
-            public void StdInAvaliable(StreamWriter writer)
+            public void StdInAvailiable(StreamWriter writer)
             {
-                pipe.Outputs += writer.BaseStream;
             }
         }
 
@@ -115,7 +109,7 @@ namespace DSharpBotCore.Entities.Managers
             private string filename;
             public string InputString => $@"""{Path.Combine(filepath, filename)}""";
 
-            public void StdInAvaliable(StreamWriter writer)
+            public void StdInAvailiable(StreamWriter writer)
             { // shouldn't be called since not flagged as a pipe
                 throw new NotImplementedException();
             }
@@ -188,7 +182,11 @@ namespace DSharpBotCore.Entities.Managers
 
         public IInput Input { get; set; }
         private EasyAddList<IOutput> outputs = new EasyAddList<IOutput>();
-        public EasyAddList<IOutput> Outputs { get => outputs; set { } }
+        public EasyAddList<IOutput> Outputs
+        {
+            get => outputs;
+            set => outputs = value;
+        }
 
         private string ffmpegLocation;
 
@@ -211,22 +209,17 @@ namespace DSharpBotCore.Entities.Managers
             if (Input == null || Outputs.Count == 0)
                 throw new InvalidOperationException("No inputs and/or outputs supplied");
 
-            bool redirectStdIn = false;
-            bool redirectStdOut = false;
-            IOutput pipeOutput = null;
-            string args = "";// $"-v {MessageLevel.ToString()}";
-
-            var numOutPipes = Outputs.Count((IOutput op) => op.IsPipe);
+            var numOutPipes = Outputs.Count(op => op.IsPipe);
 
             if (numOutPipes > 1)
                 throw new InvalidOperationException("Only one output can be a pipe!");
 
-            redirectStdIn = Input.IsPipe;
-            redirectStdOut = numOutPipes != 0;
+            var redirectStdIn = Input.IsPipe;
+            var redirectStdOut = numOutPipes != 0;
 
-            pipeOutput = Outputs.FirstOrDefault((IOutput op) => op.IsPipe);
+            var pipeOutput = Outputs.FirstOrDefault(op => op.IsPipe);
 
-            args = $"-hide_banner -v {(redirectStdOut ? LogLevel.quiet : MessageLevel).ToString()} -i {Input.InputString} ";
+            var args = $"-hide_banner -v {(redirectStdOut ? LogLevel.quiet : MessageLevel).ToString()} -i {Input.InputString} ";
 
             foreach (var op in outputs)
                 args += $"{op.Options} {(op.Codec != null ? $"-c:a {op.Codec} " : "")}{(op.Format != null ? $"-f {op.Format} " : "")}{op.OutputString} ";
@@ -241,10 +234,11 @@ namespace DSharpBotCore.Entities.Managers
             };
 
             ffmpegProcess = Process.Start(ffinfo);
+            Debug.Assert(ffmpegProcess != null, nameof(ffmpegProcess) + " != null");
             if (Input.IsPipe)
-                Input.StdInAvaliable(ffmpegProcess.StandardInput);
+                Input.StdInAvailiable(ffmpegProcess?.StandardInput);
             if (pipeOutput != null)
-                pipeOutput.StdOutAvailiable(ffmpegProcess.StandardOutput);
+                pipeOutput.StdOutAvailiable(ffmpegProcess?.StandardOutput);
 
             ffmpegTask = Task.Run(delegate
             {

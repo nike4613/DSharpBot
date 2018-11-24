@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace DSharpBotCore.Entities
@@ -11,14 +9,9 @@ namespace DSharpBotCore.Entities
         private Stream input;
         private EasyAddList<Stream> outputs = new EasyAddList<Stream>();
 
-        public EasyAddList<Stream> Outputs { get => outputs; set { } }
+        public EasyAddList<Stream> Outputs => outputs;
 
         private Task streamProcessorTask;
-
-        public BufferedPipe()
-        {
-
-        }
 
         public Stream Input
         {
@@ -38,10 +31,9 @@ namespace DSharpBotCore.Entities
         {
             byte[] buffer = new byte[blockSize];
 
-            int amt = 0;
-
             try
             {
+                int amt;
                 while ((amt = input.Read(buffer, 0, buffer.Length)) > 0)
                     foreach (var output in outputs)
                         output.Write(buffer, 0, amt);

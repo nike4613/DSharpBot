@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using DSharpPlus;
 using DSharpPlus.Interactivity;
 using Newtonsoft.Json;
@@ -54,10 +53,10 @@ namespace DSharpBotCore.Entities
             public string[] Prefixes = { "!" };
 
             [JsonProperty("caseSensitive", Required = Required.DisallowNull)]
-            public bool CaseSensitive = false;
+            public bool CaseSensitive;
 
             [JsonProperty("useDms", Required = Required.DisallowNull)]
-            public bool UseDMs = false;
+            public bool UseDMs;
 
             // Doesn't seem to work
             [JsonProperty("useMentionPrefix", Required = Required.DisallowNull)]
@@ -73,9 +72,10 @@ namespace DSharpBotCore.Entities
         public class VoiceObject
         {
             [JsonProperty("enabled", Required = Required.DisallowNull)]
-            public bool Enabled = false;
+            public bool Enabled;
 
             [JsonProperty("ffmpegLocation", Required = Required.DisallowNull)]
+            // ReSharper disable once InconsistentNaming
             public string FFMpegLocation = "libs/ffmpeg";
 
             public class DownloadObject
@@ -157,7 +157,7 @@ namespace DSharpBotCore.Entities
                 public class D6Object
                 {
                     [JsonProperty("useSpecial", Required = Required.DisallowNull)]
-                    public bool UseSpecial = false;
+                    public bool UseSpecial;
 
                     [JsonProperty("rolls", Required = Required.DisallowNull)]
                     public int Rolls = 25; // 2.5s
@@ -173,7 +173,7 @@ namespace DSharpBotCore.Entities
                 public D6Object D6 = new D6Object();
 
                 [JsonProperty("deleteTrigger", Required = Required.DisallowNull)]
-                public bool DeleteTrigger = false;
+                public bool DeleteTrigger;
             }
 
             [JsonProperty("roll", Required = Required.DisallowNull)]
@@ -199,16 +199,6 @@ namespace DSharpBotCore.Entities
 
         public override bool CanWrite => true;
 
-        public override bool Equals(object obj)
-        {
-            return base.Equals(obj);
-        }
-
-        public override int GetHashCode()
-        {
-            return base.GetHashCode();
-        }
-
         private readonly string timeFormat = @"h\hm\mss\.FFF\s";
         public override TimeSpan ReadJson(JsonReader reader, Type objectType, TimeSpan existingValue, bool hasExistingValue, JsonSerializer serializer)
         {
@@ -219,11 +209,6 @@ namespace DSharpBotCore.Entities
                 ts = existingValue;
             }
             return ts;
-        }
-
-        public override string ToString()
-        {
-            return base.ToString();
         }
 
         public override void WriteJson(JsonWriter writer, TimeSpan value, JsonSerializer serializer)

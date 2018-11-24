@@ -1,12 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Collections.Generic;
 
 namespace DSharpBotCore.Entities
 {
     class EasyAddList<T> : List<T>
     {
-        public EasyAddList() : base() { }
+        public EasyAddList()
+        { }
 
         public EasyAddList(List<T> old) : base(old) { }
 

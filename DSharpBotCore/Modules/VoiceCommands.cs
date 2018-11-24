@@ -3,41 +3,35 @@ using DSharpBotCore.Entities.Managers;
 using DSharpBotCore.Extensions;
 using DSharpPlus.CommandsNext;
 using DSharpPlus.CommandsNext.Attributes;
-using DSharpPlus.Entities;
 using DSharpPlus.VoiceNext;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace DSharpBotCore.Modules
 {
     [Group("voice"), Description("Commands relating to voice chat.")]
-    class VoiceCommands : BaseCommandModule
+    internal abstract class VoiceCommands : BaseCommandModule
     {
-        Bot bot;
-        Configuration config;
-        DownloadManager manager;
-        public VoiceCommands(Bot bot, Configuration config, DownloadManager manager)
+        private readonly Bot bot;
+        private readonly Configuration config;
+
+        protected VoiceCommands(Bot bot, Configuration config)
         {
             this.bot = bot;
             this.config = config;
-            this.manager = manager;
-            youtubedl = new YoutubeDLWrapper(config.Voice.Download.YoutubeDlLocation);
+            youtubeDl = new YoutubeDLWrapper(config.Voice.Download.YoutubeDlLocation);
             ffmpegLoc = config.Voice.FFMpegLocation;
             volume = config.Voice.DefaultVolume;
         }
 
-        YoutubeDLWrapper youtubedl;
-        readonly string ffmpegLoc;
-        FFMpegWrapper ffwrap;
-        BufferedPipe ytdlPipe;
-        DiscordVoiceStream dvStream;
+        private readonly YoutubeDLWrapper youtubeDl;
+        private readonly string ffmpegLoc;
+        private FFMpegWrapper ffwrap;
+        private BufferedPipe ytdlPipe;
+        private DiscordVoiceStream dvStream;
 
-        bool earRape = false;
+        bool earRape;
         double volume;
 
         [Command("join"), Description("Joins the user's voice channel.")]
@@ -55,15 +49,15 @@ namespace DSharpBotCore.Modules
             var chn = ctx.Member?.VoiceState?.Channel;
             if (chn == null)
             {
-                await ctx.ErrorWith(bot, "Error connecting to voice", "User not in a channel", ("User", ctx.Member.Mention));
+                await ctx.ErrorWith(bot, "Error connecting to voice", "User not in a channel", ("User", ctx.Member?.Mention));
                 return;
             }
 
-            vnc = await vnext.ConnectAsync(chn);
+            await vnext.ConnectAsync(chn);
             await ctx.RespondAsync("👌");
         }
 
-        bool stopped = false;
+        bool stopped;
 
         [Command("play"), Description("Plays the song.")]
         public async Task Play(CommandContext ctx, 
@@ -78,7 +72,7 @@ namespace DSharpBotCore.Modules
                 return;
             }
 
-            await vnc.SendSpeakingAsync(true); // send a speaking indicator
+            await vnc.SendSpeakingAsync(); // send a speaking indicator
 
             if (ffwrap != null)
             {
@@ -92,7 +86,7 @@ namespace DSharpBotCore.Modules
 
                 stopped = false;
 
-                var info = (await youtubedl.GetUrlInfoStructs(url))[0];
+                var info = (await youtubeDl.GetUrlInfoStructs(url))[0];
 
                 var file = Path.Combine(config.Voice.Download.DownloadLocation,
                     string.Format(YoutubeDLWrapper.YTDLInfoStruct.NameFormat, info.EntryID, info.ExtractorName) + "." + format);
@@ -107,17 +101,17 @@ namespace DSharpBotCore.Modules
                 else
                 {
                     ytdlPipe = new BufferedPipe { BlockSize = 8192 }; // literally just piping from ytdl to ffmpeg
-                    ffwrap.Input = new FFMpegWrapper.PipeInput(ytdlPipe);
+                    ffwrap.Input = new FFMpegWrapper.PipeInput();
                     ffwrap.Outputs += new FFMpegWrapper.FileOutput(config.Voice.Download.DownloadLocation,
                         string.Format(YoutubeDLWrapper.YTDLInfoStruct.NameFormat, info.EntryID, info.ExtractorName) + "." + format,
                         format) { Options = "-ac 2 -ar 64k" };
                 }
 
                 var bpipe = new BufferedPipe { BlockSize = 3840 };
-                bpipe.Outputs += dvStream = new DiscordVoiceStream(vnc) { BlockSize = 3840, BlockLength = 20, Volume = volume, UseEarRapeVolumeMode = earRape };
+                dvStream = new DiscordVoiceStream(vnc) { BlockSize = 3840, BlockLength = 20, Volume = volume, UseEarRapeVolumeMode = earRape };
                 ffwrap.Outputs += new FFMpegWrapper.PipeOutput(bpipe, "s16le") { Options = "-ac 2 -ar 48k" };
                 ffwrap.Start();
-                if (!useLocalFile) await youtubedl.StreamInItem(info, ytdlPipe);
+                if (!useLocalFile) await youtubeDl.StreamInItem(info, ytdlPipe);
                 await bpipe.AwaitEndOfStream;
                 await ffwrap.AwaitProcessEnd;
 
@@ -148,8 +142,6 @@ namespace DSharpBotCore.Modules
             if (config.Commands.Roll.DeleteTrigger)
                 await ctx.Message.DeleteAsync();
 
-            var authMember = await ctx.Guild.GetMemberAsync(ctx.Message.Author.Id);
-
             await ctx.RespondAsync($"The current volume is **{volume:p}**");
         }
 
@@ -160,8 +152,6 @@ namespace DSharpBotCore.Modules
 
             if (config.Commands.Roll.DeleteTrigger)
                 await ctx.Message.DeleteAsync();
-
-            var authMember = await ctx.Guild.GetMemberAsync(ctx.Message.Author.Id);
 
             if (newvol < 0 || newvol > 100)
             {
@@ -183,8 +173,6 @@ namespace DSharpBotCore.Modules
             if (config.Commands.Roll.DeleteTrigger)
                 await ctx.Message.DeleteAsync();
 
-            var authMember = await ctx.Guild.GetMemberAsync(ctx.Message.Author.Id);
-
             await ctx.RespondAsync($"Ear rape mode is currently **{(earRape ? "on" : "off")}**");
         }
 
@@ -201,8 +189,6 @@ namespace DSharpBotCore.Modules
 
             if (config.Commands.Roll.DeleteTrigger)
                 await ctx.Message.DeleteAsync();
-
-            var authMember = await ctx.Guild.GetMemberAsync(ctx.Message.Author.Id);
             
             string newStateS = newState ? "on" : "off";
 
@@ -233,7 +219,6 @@ namespace DSharpBotCore.Modules
             catch (Exception e)
             {
                 await ctx.ErrorWith(bot, "Error stopping audio", "Stop() threw an error", ($"{e.GetType().Name} in {e.TargetSite.Name}", e.Message));
-                return;
             }
         }
 

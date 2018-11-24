@@ -2,7 +2,6 @@
 using DSharpPlus.CommandsNext;
 using DSharpPlus.EventArgs;
 using DSharpPlus.Interactivity;
-using DSharpPlus.Net.WebSocket;
 using Newtonsoft.Json;
 using System;
 using System.IO;
@@ -13,6 +12,7 @@ using System.Threading;
 using DSharpPlus.VoiceNext;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
+using DSharpBotCore.Entities.Managers;
 
 namespace DSharpBotCore
 {
@@ -23,7 +23,7 @@ namespace DSharpBotCore
         public CommandsNextExtension Commands;
         public InteractivityExtension Interactivity;
         public VoiceNextExtension Voice;
-        public CancellationTokenSource CTS;
+        public readonly CancellationTokenSource CTS;
 
         internal void WriteCenter(string value, int skipline = 0)
         {
@@ -119,7 +119,7 @@ namespace DSharpBotCore
                 AutoReconnect = Config.Connection.AutoReconnect,
             });
             
-            Console.CancelKeyPress += (object sender, ConsoleCancelEventArgs ev) =>
+            Console.CancelKeyPress += (sender, ev) =>
             {
                 ev.Cancel = true;
 
@@ -150,9 +150,7 @@ namespace DSharpBotCore
                     .AddSingleton(this);
             if (Config.Voice.Enabled) services.AddSingleton(Voice);
 
-            var serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions()
-            {
-            });
+            var serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions());
 
             Commands = Client.UseCommandsNext(new CommandsNextConfiguration
             {
@@ -186,11 +184,11 @@ namespace DSharpBotCore
 
         private readonly string Author = "nike4613";
         private readonly string ProjectName = "DSharpBotCore";
-        private readonly Version Version = Assembly.GetExecutingAssembly().GetName().Version;
+        private readonly Version _version = Assembly.GetExecutingAssembly().GetName().Version;
         public async Task RunAsync()
         {
 
-            Client.DebugLogger.LogMessage(LogLevel.Info, Config.Name, $"Starting {Config.Name} ({Author}/{ProjectName} {Version})", DateTime.Now);
+            Client.DebugLogger.LogMessage(LogLevel.Info, Config.Name, $"Starting {Config.Name} ({Author}/{ProjectName} {_version})", DateTime.Now);
 
             await Client.ConnectAsync();
 
@@ -199,7 +197,7 @@ namespace DSharpBotCore
 
             await Client.DisconnectAsync();
 
-            Client.DebugLogger.LogMessage(LogLevel.Info, Config.Name, $"{Config.Name} ({Author}/{ProjectName} {Version}) stopped", DateTime.Now);
+            Client.DebugLogger.LogMessage(LogLevel.Info, Config.Name, $"{Config.Name} ({Author}/{ProjectName} {_version}) stopped", DateTime.Now);
         }
 
         private Task Client_ClientError(ClientErrorEventArgs e)

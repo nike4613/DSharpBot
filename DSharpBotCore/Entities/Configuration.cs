@@ -201,6 +201,7 @@ namespace DSharpBotCore.Entities
     public enum BotMode
     {
         Icons__DND,
+        None,
         Genesys
     }
 

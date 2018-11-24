@@ -13,6 +13,7 @@ using DSharpPlus.VoiceNext;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using DSharpBotCore.Entities.Managers;
+using DSharpBotCore.Modules.Modes;
 
 namespace DSharpBotCore
 {
@@ -162,6 +163,19 @@ namespace DSharpBotCore
                 Services = serviceProvider
             });
             Commands.RegisterCommands<Commands>();
+
+            switch (Config.BotMode)
+            {
+                case BotMode.Icons__DND:
+                    Commands.RegisterCommands<IconsDndCommands>();
+                    break;
+                case BotMode.Genesys:
+
+                    break;
+                case BotMode.None:
+                    break;
+            }
+
             // Don't use voice if not enabled
             if (Config.Voice.Enabled) Commands.RegisterCommands<VoiceCommands>();
 

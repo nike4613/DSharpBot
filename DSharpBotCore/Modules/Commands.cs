@@ -13,7 +13,7 @@ using org.mariuszgromada.math.mxparser;
 
 namespace DSharpBotCore.Modules
 {
-    class Commands : BaseCommandModule
+    public class Commands : BaseCommandModule
     {
         Bot bot;
         Configuration config;
@@ -210,55 +210,7 @@ namespace DSharpBotCore.Modules
             await ctx.ErrorWith(bot, "Not enough options were provided.", "No poll time was provided.", (null, "Argument 1 (duration) wasn't provided."));
         }
 
-        [Command("d6")]
-        [Description("Alias for `roll 6`")]
-        public async Task RollD6(CommandContext ctx, 
-            [Description("The number of dice to use.")] int number = 1) => await RollDice(ctx, 6, number);
-
-        [Command("roll"), Aliases("r","d")]
-        [Description("Rolls *n* *n*-sided dice and shows the result.")]
-        public async Task RollDice(CommandContext ctx, 
-            [Description("The number of faces to use.")] int? faces = null, 
-            [Description("The number of dice to use.")] int number = 1)
-        {
-            await ctx.TriggerTypingAsync();
-
-            if (config.Commands.Roll.DeleteTrigger)
-                await ctx.Message.DeleteAsync();
-
-            var authMember = await ctx.Guild.GetMemberAsync(ctx.Message.Author.Id);
-
-            if (faces == null)
-            {
-                await ctx.ErrorWith(bot, "Not enough options were provided.", "Number of faces was not specified.", (null, "Argument 1 (faces) wasn't provided."));
-                return;
-            }
-
-            var embed = new DiscordEmbedBuilder()
-                .WithMemberAsAuthor(authMember)
-                .WithDefaultFooter(bot)
-                .WithTitle($"Rolling {number}d{faces}");
-
-            if (config.Commands.Roll.D6.UseSpecial && faces == 6)
-            { // special D6 handling
-
-            }
-
-            var random = new Random();
-            var results = Enumerable.Repeat(0, number).Select(_ => random.Next(1, faces.Value + 1)).ToArray();
-            var sum = results.Sum();
-
-            embed.Description = $"The results: {results.Select(x => $"`{x}`").MakeReadableString()}.\nThe sum: `{sum}`.";
-
-            if (!userLastResults.ContainsKey(authMember))
-                userLastResults.Add(authMember, sum);
-            else
-                userLastResults[authMember] = sum;
-
-            await ctx.RespondAsync(embed: embed);
-        }
-
-        private Dictionary<DiscordMember, double> userLastResults = new Dictionary<DiscordMember, double>();
+        internal static readonly Dictionary<DiscordMember, double> UserLastResults = new Dictionary<DiscordMember, double>();
         [Command("calc"), Aliases("c")]
         [Description("Evaluates a provided expression")]
         public async Task EvalExpression(CommandContext ctx,
@@ -272,9 +224,9 @@ namespace DSharpBotCore.Modules
             var exprObj = new Expression(expr);
             var authMember = await ctx.Guild.GetMemberAsync(ctx.Message.Author.Id);
 
-            if (userLastResults.ContainsKey(authMember))
+            if (UserLastResults.ContainsKey(authMember))
             {
-                exprObj.defineConstant("x", userLastResults[authMember]);
+                exprObj.defineConstant("x", UserLastResults[authMember]);
             }
 
             if (!exprObj.checkSyntax())
@@ -290,10 +242,10 @@ namespace DSharpBotCore.Modules
 
             var result = exprObj.calculate();
 
-            if (!userLastResults.ContainsKey(authMember))
-                userLastResults.Add(authMember, result);
+            if (!UserLastResults.ContainsKey(authMember))
+                UserLastResults.Add(authMember, result);
             else
-                userLastResults[authMember] = result;
+                UserLastResults[authMember] = result;
 
             embed.Description = $"`{exprObj.getExpressionString()} = {result}`";
 

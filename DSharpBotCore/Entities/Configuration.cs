@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using DSharpPlus;
 using DSharpPlus.Interactivity;
 using Newtonsoft.Json;
@@ -25,6 +26,9 @@ namespace DSharpBotCore.Entities
 
         [JsonProperty("libraryPath", Required = Required.DisallowNull)]
         public string LibraryPath = "libs";
+
+        [JsonProperty("botMode", Required = Required.DisallowNull), JsonConverter(typeof(BotModeConverter))]
+        public BotMode BotMode = BotMode.Icons__DND;
 
         public class ErrorsObject
         {
@@ -191,6 +195,36 @@ namespace DSharpBotCore.Entities
 
         [JsonProperty("commands", Required = Required.DisallowNull)]
         public CommandsObject Commands = new CommandsObject();
+    }
+
+    [SuppressMessage("ReSharper", "InconsistentNaming")]
+    public enum BotMode
+    {
+        Icons__DND,
+        Genesys
+    }
+
+    class BotModeConverter : JsonConverter<BotMode>
+    {
+        public override bool CanRead => true;
+
+        public override bool CanWrite => true;
+        
+        public override BotMode ReadJson(JsonReader reader, Type objectType, BotMode existingValue, bool hasExistingValue, JsonSerializer serializer)
+        {
+            var success = Enum.TryParse<BotMode>(reader.ReadAsString().Replace("/", "__"), out var result);
+            if (!success)
+            {
+                Console.Error.WriteLine($"Error parsing BotMode from configuration; falling back to {existingValue.ToString().Replace("__", "/")}");
+                result = existingValue;
+            }
+            return result;
+        }
+
+        public override void WriteJson(JsonWriter writer, BotMode value, JsonSerializer serializer)
+        {
+            JToken.FromObject(value.ToString().Replace("__", "/")).WriteTo(writer);
+        }
     }
 
     class TimeSpanConverter : JsonConverter<TimeSpan>

@@ -90,8 +90,16 @@ namespace DSharpBotCore.Entities.Managers
 
             public string InputString => "pipe:"; // pipe from stdin
 
+            private BufferedPipe pipe;
+
+            public PipeInput(BufferedPipe pipe)
+            {
+                this.pipe = pipe;
+            }
+
             public void StdInAvailiable(StreamWriter writer)
             {
+                pipe.Outputs.Add(writer.BaseStream);
             }
         }
 
@@ -237,8 +245,7 @@ namespace DSharpBotCore.Entities.Managers
             Debug.Assert(ffmpegProcess != null, nameof(ffmpegProcess) + " != null");
             if (Input.IsPipe)
                 Input.StdInAvailiable(ffmpegProcess?.StandardInput);
-            if (pipeOutput != null)
-                pipeOutput.StdOutAvailiable(ffmpegProcess?.StandardOutput);
+            pipeOutput?.StdOutAvailiable(ffmpegProcess?.StandardOutput);
 
             ffmpegTask = Task.Run(delegate
             {

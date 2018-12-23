@@ -170,7 +170,7 @@ namespace DSharpBotCore
                     Commands.RegisterCommands<IconsDndCommands>();
                     break;
                 case BotMode.Genesys:
-
+                    Commands.RegisterCommands<GenesysCommands>();
                     break;
                 case BotMode.None:
                     break;

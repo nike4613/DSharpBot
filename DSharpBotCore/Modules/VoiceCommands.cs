@@ -11,12 +11,13 @@ using System.Threading.Tasks;
 namespace DSharpBotCore.Modules
 {
     [Group("voice"), Description("Commands relating to voice chat.")]
-    internal abstract class VoiceCommands : BaseCommandModule
+    // ReSharper disable once ClassNeverInstantiated.Global
+    internal class VoiceCommands : BaseCommandModule
     {
         private readonly Bot bot;
         private readonly Configuration config;
 
-        protected VoiceCommands(Bot bot, Configuration config)
+        public VoiceCommands(Bot bot, Configuration config)
         {
             this.bot = bot;
             this.config = config;
@@ -101,7 +102,7 @@ namespace DSharpBotCore.Modules
                 else
                 {
                     ytdlPipe = new BufferedPipe { BlockSize = 8192 }; // literally just piping from ytdl to ffmpeg
-                    ffwrap.Input = new FFMpegWrapper.PipeInput();
+                    ffwrap.Input = new FFMpegWrapper.PipeInput(ytdlPipe);
                     ffwrap.Outputs += new FFMpegWrapper.FileOutput(config.Voice.Download.DownloadLocation,
                         string.Format(YoutubeDLWrapper.YTDLInfoStruct.NameFormat, info.EntryID, info.ExtractorName) + "." + format,
                         format) { Options = "-ac 2 -ar 64k" };
@@ -109,6 +110,7 @@ namespace DSharpBotCore.Modules
 
                 var bpipe = new BufferedPipe { BlockSize = 3840 };
                 dvStream = new DiscordVoiceStream(vnc) { BlockSize = 3840, BlockLength = 20, Volume = volume, UseEarRapeVolumeMode = earRape };
+                bpipe.Outputs += dvStream;
                 ffwrap.Outputs += new FFMpegWrapper.PipeOutput(bpipe, "s16le") { Options = "-ac 2 -ar 48k" };
                 ffwrap.Start();
                 if (!useLocalFile) await youtubeDl.StreamInItem(info, ytdlPipe);

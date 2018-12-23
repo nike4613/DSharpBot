@@ -9,7 +9,11 @@ namespace DSharpBotCore.Entities
         private Stream input;
         private EasyAddList<Stream> outputs = new EasyAddList<Stream>();
 
-        public EasyAddList<Stream> Outputs => outputs;
+        public EasyAddList<Stream> Outputs
+        {
+            get => outputs;
+            set => outputs = value;
+        }
 
         private Task streamProcessorTask;
 

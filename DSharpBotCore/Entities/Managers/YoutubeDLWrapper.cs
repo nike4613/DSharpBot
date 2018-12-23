@@ -26,7 +26,7 @@ namespace DSharpBotCore.Entities.Managers
             [JsonProperty("extractor", Required = Required.Always)]
             public string ExtractorName;
             [JsonProperty("webpage_url_basename", Required = Required.Always)]
-            public string UrlBasenme; // may be the same as entryID
+            public string UrlBasename; // may be the same as entryID
             [JsonProperty("webpage_url", Required = Required.Always)]
             public string Url;
 
@@ -84,8 +84,8 @@ namespace DSharpBotCore.Entities.Managers
             {
                 var proc = Process.Start(procInfo);
                 Debug.Assert(proc != null, nameof(proc) + " != null");
-                recieveOutput(proc?.StandardOutput);
-                proc?.WaitForExit();
+                recieveOutput(proc.StandardOutput);
+                proc.WaitForExit();
             });
         }
     }

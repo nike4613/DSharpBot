@@ -27,7 +27,7 @@ namespace DSharpBotCore.Entities
         [JsonProperty("libraryPath", Required = Required.DisallowNull)]
         public string LibraryPath = "libs";
 
-        [JsonProperty("botMode", Required = Required.DisallowNull), JsonConverter(typeof(BotModeConverter))]
+        [JsonProperty("botMode", Required = Required.DisallowNull), JsonConverter(typeof(StringEnumConverter))]
         public BotMode BotMode = BotMode.Icons__DND;
 
         public class ErrorsObject
@@ -176,6 +176,57 @@ namespace DSharpBotCore.Entities
                 [JsonProperty("d6", Required = Required.DisallowNull)]
                 public D6Object D6 = new D6Object();
 
+                public class GenesysSymbolsObject
+                {
+                    [JsonProperty("none", Required = Required.DisallowNull)]
+                    public ulong None;
+                    [JsonProperty("success", Required = Required.DisallowNull)]
+                    public ulong Success;
+                    [JsonProperty("advantage", Required = Required.DisallowNull)]
+                    public ulong Advantage;
+                    [JsonProperty("triumph", Required = Required.DisallowNull)]
+                    public ulong Triumph;
+                    [JsonProperty("failure", Required = Required.DisallowNull)]
+                    public ulong Failure;
+                    [JsonProperty("threat", Required = Required.DisallowNull)]
+                    public ulong Threat;
+                    [JsonProperty("despair", Required = Required.DisallowNull)]
+                    public ulong Despair;
+                }
+
+                [JsonProperty("genesysSymbols")]
+                public GenesysSymbolsObject GenesysSymbols;
+
+                public class GenesysDiceObject
+                {
+                    [JsonProperty("boost", Required = Required.DisallowNull)]
+                    public ulong Boost;
+                    [JsonProperty("setback", Required = Required.DisallowNull)]
+                    public ulong Setback;
+                    [JsonProperty("ability", Required = Required.DisallowNull)]
+                    public ulong Ability;
+                    [JsonProperty("difficulty", Required = Required.DisallowNull)]
+                    public ulong Difficulty;
+                    [JsonProperty("proficiency", Required = Required.DisallowNull)]
+                    public ulong Proficiency;
+                    [JsonProperty("challenge", Required = Required.DisallowNull)]
+                    public ulong Challenge;
+                }
+
+                [JsonProperty("genesysDice")]
+                public GenesysDiceObject GenesysDice;
+
+                public class ReactionObject
+                {
+                    [JsonProperty("confirm", Required = Required.DisallowNull)]
+                    public string Confirm;
+                    [JsonProperty("cancel", Required = Required.DisallowNull)]
+                    public string Cancel;
+                }
+
+                [JsonProperty("reactions")]
+                public ReactionObject Reactions;
+
                 [JsonProperty("deleteTrigger", Required = Required.DisallowNull)]
                 public bool DeleteTrigger;
             }
@@ -203,29 +254,6 @@ namespace DSharpBotCore.Entities
         Icons__DND,
         None,
         Genesys
-    }
-
-    class BotModeConverter : JsonConverter<BotMode>
-    {
-        public override bool CanRead => true;
-
-        public override bool CanWrite => true;
-        
-        public override BotMode ReadJson(JsonReader reader, Type objectType, BotMode existingValue, bool hasExistingValue, JsonSerializer serializer)
-        {
-            var success = Enum.TryParse<BotMode>(reader.ReadAsString().Replace("/", "__"), out var result);
-            if (!success)
-            {
-                Console.Error.WriteLine($"Error parsing BotMode from configuration; falling back to {existingValue.ToString().Replace("__", "/")}");
-                result = existingValue;
-            }
-            return result;
-        }
-
-        public override void WriteJson(JsonWriter writer, BotMode value, JsonSerializer serializer)
-        {
-            JToken.FromObject(value.ToString().Replace("__", "/")).WriteTo(writer);
-        }
     }
 
     class TimeSpanConverter : JsonConverter<TimeSpan>

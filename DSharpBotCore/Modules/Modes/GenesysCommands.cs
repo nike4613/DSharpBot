@@ -59,17 +59,18 @@ namespace DSharpBotCore.Modules.Modes
                 emojiDice[emoji] = Dice.DiceType.Challenge;
                 emojiDiceOrder.Add(emoji);
             };
-            bot.Client.GuildAvailable += async args =>
+            bot.Client.GuildAvailable += args =>
             {
                 var src = config.Commands.Roll.Reactions;
                 confirmEmoji = DiscordEmoji.FromName(args.Client, src.Confirm);
                 cancelEmoji = DiscordEmoji.FromName(args.Client, src.Cancel);
+                return Task.CompletedTask;
             };
         }
 
         public Configuration Config { get; set; }
 
-        [Command("roll"), Aliases("r", "d")]
+        [Command("roll"), Aliases("r")]
         [Description("Rolls Genesys dice.")]
         public async Task RollDice(CommandContext ctx)
         {
@@ -253,5 +254,53 @@ namespace DSharpBotCore.Modules.Modes
             }
         }
 
+        [Command("d6")]
+        [Description("Alias for `roll 6`")]
+        public async Task RollD6(CommandContext ctx,
+            [Description("The number of dice to use.")] int number = 1) => await RollDice(ctx, 6, number);
+
+        [Command("dice"), Aliases("d")]
+        [Description("Rolls *n* *n*-sided dice and shows the result.")]
+        public async Task RollDice(CommandContext ctx,
+            // ReSharper disable once MethodOverloadWithOptionalParameter
+            [Description("The number of faces to use.")] int? faces = null,
+            [Description("The number of dice to use.")] int number = 1)
+        {
+            await ctx.TriggerTypingAsync();
+
+            if (Config.Commands.Roll.DeleteTrigger)
+                await ctx.Message.DeleteAsync();
+
+            var authMember = await ctx.Guild.GetMemberAsync(ctx.Message.Author.Id);
+
+            if (faces == null)
+            {
+                await ctx.ErrorWith(bot, "Not enough options were provided.", "Number of faces was not specified.", (null, "Argument 1 (faces) wasn't provided."));
+                return;
+            }
+
+            var embed = new DiscordEmbedBuilder()
+                .WithMemberAsAuthor(authMember)
+                .WithDefaultFooter(bot)
+                .WithTitle($"Rolling {number}d{faces}");
+
+            if (Config.Commands.Roll.D6.UseSpecial && faces == 6)
+            { // special D6 handling
+
+            }
+
+            var random = new Random();
+            var results = Enumerable.Repeat(0, number).Select(_ => random.Next(1, faces.Value + 1)).ToArray();
+            var sum = results.Sum();
+
+            embed.Description = $"The results: {results.Select(x => $"`{x}`").MakeReadableString()}.\nThe sum: `{sum}`.";
+
+            if (!Commands.UserLastResults.ContainsKey(authMember))
+                Commands.UserLastResults.Add(authMember, sum);
+            else
+                Commands.UserLastResults[authMember] = sum;
+
+            await ctx.RespondAsync(embed: embed);
+        }
     }
 }

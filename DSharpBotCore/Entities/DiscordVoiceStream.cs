@@ -51,17 +51,17 @@ namespace DSharpBotCore.Entities
         public bool UseEarRapeVolumeMode { get; set; }
 
         private double volume = 1;
-        public double Volume { get => volume; set { volume = value; _multCache = -1; } }
+        public double Volume { get => volume; set { volume = value; multCache = -1; } }
 
-        private double _multCache = -1;
+        private double multCache = -1;
         private double Multiplier
         {
             get
             {
-                if (_multCache <= 0)
-                    _multCache = (Math.Pow(10d, volume) - 1) / 9d;
+                if (multCache <= 0)
+                    multCache = (Math.Pow(10d, volume) - 1) / 9d;
 
-                return _multCache; // 卍
+                return multCache; // 卍
             }
         }
 

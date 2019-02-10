@@ -198,11 +198,11 @@ namespace DSharpBotCore
 
         private readonly string Author = "nike4613";
         private readonly string ProjectName = "DSharpBotCore";
-        private readonly Version _version = Assembly.GetExecutingAssembly().GetName().Version;
+        private readonly Version version = Assembly.GetExecutingAssembly().GetName().Version;
         public async Task RunAsync()
         {
 
-            Client.DebugLogger.LogMessage(LogLevel.Info, Config.Name, $"Starting {Config.Name} ({Author}/{ProjectName} {_version})", DateTime.Now);
+            Client.DebugLogger.LogMessage(LogLevel.Info, Config.Name, $"Starting {Config.Name} ({Author}/{ProjectName} {version})", DateTime.Now);
 
             await Client.ConnectAsync();
 
@@ -211,7 +211,7 @@ namespace DSharpBotCore
 
             await Client.DisconnectAsync();
 
-            Client.DebugLogger.LogMessage(LogLevel.Info, Config.Name, $"{Config.Name} ({Author}/{ProjectName} {_version}) stopped", DateTime.Now);
+            Client.DebugLogger.LogMessage(LogLevel.Info, Config.Name, $"{Config.Name} ({Author}/{ProjectName} {version}) stopped", DateTime.Now);
         }
 
         private Task Client_ClientError(ClientErrorEventArgs e)

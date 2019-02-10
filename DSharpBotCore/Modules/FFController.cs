@@ -58,7 +58,7 @@ namespace DSharpBotCore.Modules
 
         public delegate Task PlayBuffer(byte[] data, int blockSize, int bitRate);
 
-        private Task _playerTask;
+        private Task playerTask;
 
         private async Task _PlayUsingAsync(string source, PlayBuffer player)
         {
@@ -97,7 +97,7 @@ namespace DSharpBotCore.Modules
                 ffproc?.Kill();
         }
 
-        public async Task PlayUsingAsync(string source, PlayBuffer player) => await (_playerTask = _PlayUsingAsync(source, player));
+        public async Task PlayUsingAsync(string source, PlayBuffer player) => await (playerTask = _PlayUsingAsync(source, player));
 
         public Task PlayUsing(string source, PlayBuffer player) => PlayUsingAsync(source, player);
 
@@ -106,9 +106,9 @@ namespace DSharpBotCore.Modules
             if (!IsPlaying)
                 throw new InvalidOperationException("FFController is not currently playing anything!");
             cancel.Cancel();
-            if (!_playerTask.Wait(TimeSpan.FromSeconds(1)))
+            if (!playerTask.Wait(TimeSpan.FromSeconds(1)))
                 ffproc.Kill();
-            await _playerTask;
+            await playerTask;
         }
         public void StopAfter(TimeSpan delay)
         {

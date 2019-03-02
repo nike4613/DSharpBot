@@ -137,11 +137,7 @@ namespace DSharpBotCore
             });
 
             // Don't use voice if not enabled
-            if (Config.Voice.Enabled) Voice = Client.UseVoiceNext(new VoiceNextConfiguration()
-            {
-                //AudioFormat = AudioFormat.Default,
-                EnableIncoming = false
-            });
+            if (Config.Voice.Enabled) Voice = Client.UseVoiceNext(new VoiceNextConfiguration());
 
             CTS = new CancellationTokenSource();
 

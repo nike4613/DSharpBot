@@ -69,6 +69,8 @@ namespace DSharpBotCore.Entities
         {
             byte[] data = new byte[blockSz];
 
+            var stream = vnext.GetTransmitStream(blockLen);
+
             for (int remain = count; remain > 0; remain -= data.Length)
             {
                 int seglen = Math.Min(remain, data.Length);
@@ -96,7 +98,7 @@ namespace DSharpBotCore.Entities
                     }
                 }
 
-                vnext.SendAsync(data, blockLen).Wait();
+                stream.Write(data, 0, blockLen);
             }
         }
     }

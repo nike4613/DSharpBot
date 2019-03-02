@@ -7,6 +7,7 @@ using DSharpPlus.VoiceNext;
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using DSharpPlus.Entities;
 
 namespace DSharpBotCore.Modules
 {
@@ -35,9 +36,25 @@ namespace DSharpBotCore.Modules
         bool earRape;
         double volume;
 
+        private async Task RespondTemporary(Task<DiscordMessage> messageTask, bool waitFor = true)
+        {
+            var message = await messageTask;
+            if (config.Voice.ConfirmationMessageLength != TimeSpan.Zero)
+            {
+                var task = Task.Run(async () => {
+                    await Task.Delay(config.Voice.ConfirmationMessageLength);
+                    await message.DeleteAsync("Configured to delete.");
+                });
+                if (waitFor) await task;
+            }
+        }
+
         [Command("join"), Description("Joins the user's voice channel.")]
         public async Task Join(CommandContext ctx)
         {
+            if (config.Commands.MiscDeleteTrigger)
+                await ctx.Message.DeleteAsync("Delete trigger.");
+
             var vnext = ctx.Client.GetVoiceNext();
 
             var vnc = vnext.GetConnection(ctx.Guild);
@@ -55,7 +72,7 @@ namespace DSharpBotCore.Modules
             }
 
             await vnext.ConnectAsync(chn);
-            await ctx.RespondAsync("👌");
+            await RespondTemporary(ctx.RespondAsync("👌"));
         }
 
         bool stopped;
@@ -64,6 +81,9 @@ namespace DSharpBotCore.Modules
         public async Task Play(CommandContext ctx, 
             [Description("The audio to play")] string url)
         {
+            if (config.Commands.MiscDeleteTrigger)
+                await ctx.Message.DeleteAsync("Delete trigger.");
+
             var vnext = ctx.Client.GetVoiceNext();
 
             var vnc = vnext.GetConnection(ctx.Guild);
@@ -81,16 +101,28 @@ namespace DSharpBotCore.Modules
                 return;
             }
 
+            DiscordMessage lookupMessage = null;
+
             try
             {
                 const string format = "flac";
 
                 stopped = false;
 
-                var info = (await youtubeDl.GetUrlInfoStructs(url))[0];
+                var embed = new DiscordEmbedBuilder();
+
+                embed.WithTitle("*Looking up info...*")
+                     .WithUserAsAuthor(ctx.User)
+                     .WithColor(new DiscordColor("#352fe0"))
+                     .WithDefaultFooter(bot);
+
+                lookupMessage = await ctx.RespondAsync(embed: embed);
+
+                var info = (await youtubeDl.GetUrlInfoStructs(new Uri(url)))[0];
 
                 var file = Path.Combine(config.Voice.Download.DownloadLocation,
-                    string.Format(YoutubeDLWrapper.YTDLInfoStruct.NameFormat, info.EntryID, info.ExtractorName) + "." + format);
+                                        string.Format(YoutubeDLWrapper.YTDLInfoStruct.NameFormat, info.EntryID,
+                                                      info.ExtractorName) + "." + format);
 
                 bool useLocalFile = File.Exists(file);
 
@@ -98,21 +130,40 @@ namespace DSharpBotCore.Modules
 
                 if (useLocalFile)
                     ffwrap.Input = new FFMpegWrapper.FileInput(config.Voice.Download.DownloadLocation,
-                        string.Format(YoutubeDLWrapper.YTDLInfoStruct.NameFormat, info.EntryID, info.ExtractorName) + "." + format);
+                                                               string.Format(YoutubeDLWrapper.YTDLInfoStruct.NameFormat,
+                                                                             info.EntryID, info.ExtractorName) + "." +
+                                                               format);
                 else
                 {
-                    ytdlPipe = new BufferedPipe { BlockSize = 8192 }; // literally just piping from ytdl to ffmpeg
+                    ytdlPipe = new BufferedPipe {BlockSize = 8192}; // literally just piping from ytdl to ffmpeg
                     ffwrap.Input = new FFMpegWrapper.PipeInput(ytdlPipe);
                     ffwrap.Outputs += new FFMpegWrapper.FileOutput(config.Voice.Download.DownloadLocation,
-                        string.Format(YoutubeDLWrapper.YTDLInfoStruct.NameFormat, info.EntryID, info.ExtractorName) + "." + format,
-                        format) { Options = "-ac 2 -ar 64k" };
+                                                                   string
+                                                                      .Format(YoutubeDLWrapper.YTDLInfoStruct.NameFormat,
+                                                                              info.EntryID, info.ExtractorName) + "." +
+                                                                   format,
+                                                                   format) {Options = "-ac 2 -ar 64k"};
                 }
 
-                var bpipe = new BufferedPipe { BlockSize = 3840 };
-                dvStream = new DiscordVoiceStream(vnc) { BlockSize = 3840, BlockLength = 20, Volume = volume, UseEarRapeVolumeMode = earRape };
+                var bpipe = new BufferedPipe {BlockSize = 3840};
+                dvStream = new DiscordVoiceStream(vnc)
+                    {BlockSize = 3840, BlockLength = 20, Volume = volume, UseEarRapeVolumeMode = earRape};
                 bpipe.Outputs += dvStream;
-                ffwrap.Outputs += new FFMpegWrapper.PipeOutput(bpipe, "s16le") { Options = "-ac 2 -ar 48k" };
+                ffwrap.Outputs += new FFMpegWrapper.PipeOutput(bpipe, "s16le") {Options = "-ac 2 -ar 48k"};
                 ffwrap.Start();
+
+                embed.WithTitle("Now Playing")
+                     .WithDescription($"**[{info.Title.Sanitize()}]({info.Url})**\n[{info.Author.Sanitize()}]({info.AuthorUri})")
+                     .WithImageUrl(info.Thumbnail)
+                     .WithDefaultFooter(bot);
+
+                var message = lookupMessage.ModifyAsync(embed: embed.Build());
+
+                if (config.Voice.IsNowPlayingConfirmation)
+                    await RespondTemporary(message, false);
+                else
+                    await message;
+
                 if (!useLocalFile) await youtubeDl.StreamInItem(info, ytdlPipe);
                 await bpipe.AwaitEndOfStream;
                 await ffwrap.AwaitProcessEnd;
@@ -129,7 +180,9 @@ namespace DSharpBotCore.Modules
                 ytdlPipe = null;
                 ffwrap = null;
 
-                await ctx.ErrorWith(bot, "Error playing audio", "PlayUsing() threw an error", ($"{e.GetType().Name} in {e.TargetSite.Name}", e.Message));
+                lookupMessage?.DeleteAsync("Should never stick around.")?.Wait();
+                await ctx.ErrorWith(bot, "Error playing audio", "PlayUsing() threw an error",
+                                    ($"{e.GetType().Name} in {e.TargetSite.Name}", e.Message));
                 return;
             }
 
@@ -203,6 +256,9 @@ namespace DSharpBotCore.Modules
         [Command("stop"), Description("Leaves the voice channel.")]
         public async Task Stop(CommandContext ctx)
         {
+            if (config.Commands.MiscDeleteTrigger)
+                await ctx.Message.DeleteAsync("Delete trigger.");
+
             var vnext = ctx.Client.GetVoiceNext();
 
             var vnc = vnext.GetConnection(ctx.Guild);
@@ -222,11 +278,16 @@ namespace DSharpBotCore.Modules
             {
                 await ctx.ErrorWith(bot, "Error stopping audio", "Stop() threw an error", ($"{e.GetType().Name} in {e.TargetSite.Name}", e.Message));
             }
+
+            await RespondTemporary(ctx.RespondAsync("Audio stopped."));
         }
 
         [Command("leave"), Description("Leaves the voice channel.")]
         public async Task Leave(CommandContext ctx)
         {
+            if (config.Commands.MiscDeleteTrigger)
+                await ctx.Message.DeleteAsync("Delete trigger.");
+
             var vnext = ctx.Client.GetVoiceNext();
 
             var vnc = vnext.GetConnection(ctx.Guild);
@@ -239,7 +300,7 @@ namespace DSharpBotCore.Modules
             await Stop(ctx);
 
             vnc.Disconnect();
-            await ctx.RespondAsync("👌");
+            await RespondTemporary(ctx.RespondAsync("👌"));
         }
     }
 }

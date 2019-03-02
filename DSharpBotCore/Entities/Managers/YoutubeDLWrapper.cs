@@ -28,7 +28,15 @@ namespace DSharpBotCore.Entities.Managers
             [JsonProperty("webpage_url_basename", Required = Required.Always)]
             public string UrlBasename; // may be the same as entryID
             [JsonProperty("webpage_url", Required = Required.Always)]
-            public string Url;
+            public Uri Url;
+            [JsonProperty("thumbnail", Required = Required.DisallowNull)]
+            public Uri Thumbnail;
+            [JsonProperty("uploader", Required = Required.DisallowNull)]
+            public string Author;
+            [JsonProperty("uploader_url", Required = Required.DisallowNull)]
+            public Uri AuthorUri;
+            [JsonProperty("title", Required = Required.DisallowNull)]
+            public string Title;
 
             public override string ToString()
             {
@@ -36,9 +44,9 @@ namespace DSharpBotCore.Entities.Managers
             }
         }
 
-        private Dictionary<string, YTDLInfoStruct> urlInfo = new Dictionary<string, YTDLInfoStruct>();
+        private Dictionary<Uri, YTDLInfoStruct> urlInfo = new Dictionary<Uri, YTDLInfoStruct>();
             
-        public async Task<YTDLInfoStruct[]> GetUrlInfoStructs(string url)
+        public async Task<YTDLInfoStruct[]> GetUrlInfoStructs(Uri url)
         {
             if (urlInfo.ContainsKey(url))
             {
@@ -83,9 +91,11 @@ namespace DSharpBotCore.Entities.Managers
             await Task.Run(delegate
             {
                 var proc = Process.Start(procInfo);
-                Debug.Assert(proc != null, nameof(proc) + " != null");
-                recieveOutput(proc.StandardOutput);
-                proc.WaitForExit();
+                if (proc != null)
+                {
+                    recieveOutput(proc.StandardOutput);
+                    proc.WaitForExit();
+                }
             });
         }
     }

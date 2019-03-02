@@ -105,6 +105,12 @@ namespace DSharpBotCore.Entities
 
             [JsonProperty("defaultVolume", Required = Required.DisallowNull)]
             public double DefaultVolume = 1;
+
+            [JsonProperty("deleteConfirmationAfter", Required = Required.DisallowNull), JsonConverter(typeof(TimeSpanConverter))]
+            public TimeSpan ConfirmationMessageLength = TimeSpan.Zero; // zero makes it stay
+
+            [JsonProperty("deleteNowPlayingAsConfirmation", Required = Required.DisallowNull)]
+            public bool IsNowPlayingConfirmation;
         }
 
         [JsonProperty("voice", Required = Required.DisallowNull)]
@@ -242,6 +248,9 @@ namespace DSharpBotCore.Entities
 
             [JsonProperty("calc", Required = Required.DisallowNull)]
             public CalcObject Calc = new CalcObject();
+
+            [JsonProperty("deleteTrigger", Required = Required.DisallowNull)]
+            public bool MiscDeleteTrigger = true;
         }
 
         [JsonProperty("commands", Required = Required.DisallowNull)]

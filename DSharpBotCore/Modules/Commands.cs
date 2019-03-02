@@ -29,6 +29,9 @@ namespace DSharpBotCore.Modules
         [Description("Responds with a nice welcoming message.")]
         public async Task Hi(CommandContext ctx)
         {
+            if (config.Commands.MiscDeleteTrigger)
+                await ctx.Message.DeleteAsync("Delete trigger.");
+
             await ctx.RespondAsync($"👋 Hi, {ctx.User.Mention}!");
         }
 
@@ -254,10 +257,11 @@ namespace DSharpBotCore.Modules
 
         [Command("exit"), Hidden, RequireOwner]
         [Description("Causes the bot to quit.")]
-        public Task QuitBot(CommandContext ctx)
+        public async Task QuitBot(CommandContext ctx)
         {
+            if (config.Commands.MiscDeleteTrigger)
+                await ctx.Message.DeleteAsync("Delete trigger.");
             cts.Cancel();
-            return Task.CompletedTask;
         }
     }
 }

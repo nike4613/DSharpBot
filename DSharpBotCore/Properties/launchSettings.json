@@ -2,7 +2,7 @@
   "profiles": {
     "DSharpBotCore": {
       "commandName": "Project",
-      "commandLineArgs": "\"new light.json\""
+      "commandLineArgs": "\"icons.json\""
     }
   }
 }

@@ -69,7 +69,7 @@ namespace DSharpBotCore.Entities
         {
             byte[] data = new byte[blockSz];
 
-            var stream = vnext.GetTransmitStream(blockLen);
+            //var stream = vnext.GetTransmitStream(blockLen);
 
             for (int remain = count; remain > 0; remain -= data.Length)
             {
@@ -98,7 +98,8 @@ namespace DSharpBotCore.Entities
                     }
                 }
 
-                stream.Write(data, 0, blockLen);
+                //stream.Write(data, 0, blockLen);
+                vnext.SendAsync(data, blockLen).Wait();
             }
         }
     }

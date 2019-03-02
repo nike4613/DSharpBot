@@ -93,7 +93,8 @@ namespace DSharpBotCore.Modules
                 return;
             }
 
-            vnc.SendSpeaking();
+            //vnc.SendSpeaking();
+            await vnc.SendSpeakingAsync();
 
             if (ffwrap != null)
             {
@@ -186,8 +187,8 @@ namespace DSharpBotCore.Modules
                 return;
             }
 
-            vnc.SendSpeaking(false);
-            //await vnc.SendSpeakingAsync(false); // we're not speaking anymore
+            //vnc.SendSpeaking(false);
+            await vnc.SendSpeakingAsync(false); // we're not speaking anymore
         }
 
         [Command("volume"), Description("Gets or sets the volume"), Priority(0)]

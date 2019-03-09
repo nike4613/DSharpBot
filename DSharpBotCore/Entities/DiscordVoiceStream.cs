@@ -43,6 +43,8 @@ namespace DSharpBotCore.Entities
             throw new InvalidOperationException();
         }
 
+        public VoiceNextConnection VNext => vnext; 
+
         private int blockSz = 3840;
         private int blockLen = 20;
         public int BlockSize { get => blockSz; set => blockSz = value; }

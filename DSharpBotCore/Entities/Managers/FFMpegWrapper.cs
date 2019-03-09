@@ -1,9 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
+using DSharpBotCore.Extensions;
 
 namespace DSharpBotCore.Entities.Managers
 {
@@ -131,6 +134,9 @@ namespace DSharpBotCore.Entities.Managers
             string Format { get; }
             string Codec { get; }
 
+            string Filters { get; }
+            bool NormalizeVolume { get; }
+
             void StdOutAvailiable(StreamReader reader);
         }
 
@@ -153,6 +159,10 @@ namespace DSharpBotCore.Entities.Managers
             public string Format { get; private set; }
 
             public string Codec { get; private set; }
+
+            public string Filters { get; } = "";
+
+            public bool NormalizeVolume { get; set; } = true;
 
             public void StdOutAvailiable(StreamReader reader)
             {
@@ -182,6 +192,10 @@ namespace DSharpBotCore.Entities.Managers
 
             public string Codec { get; private set; }
 
+            public string Filters { get; } = "";
+
+            public bool NormalizeVolume { get; set; } = true;
+
             public void StdOutAvailiable(StreamReader reader)
             { // shouldn't be called since not flagged as a pipe
                 throw new NotImplementedException();
@@ -189,14 +203,9 @@ namespace DSharpBotCore.Entities.Managers
         }
 
         public IInput Input { get; set; }
-        private EasyAddList<IOutput> outputs = new EasyAddList<IOutput>();
-        public EasyAddList<IOutput> Outputs
-        {
-            get => outputs;
-            set => outputs = value;
-        }
+        public List<IOutput> Outputs { get; } = new List<IOutput>();
 
-        private string ffmpegLocation;
+        private readonly string ffmpegLocation;
 
         private Process ffmpegProcess;
         private Task ffmpegTask;
@@ -209,7 +218,7 @@ namespace DSharpBotCore.Entities.Managers
 
         public Task AwaitProcessEnd => ffmpegTask;
 
-        public void Start()
+        public void Start(CancellationToken token = default(CancellationToken))
         {
             if ((ffmpegProcess != null && !ffmpegProcess.HasExited) || (ffmpegTask != null && !ffmpegTask.IsCompleted))
                 throw new InvalidOperationException("Cannot have 2 processes running at a time");
@@ -229,8 +238,14 @@ namespace DSharpBotCore.Entities.Managers
 
             var args = $"-hide_banner -v {(redirectStdOut ? LogLevel.quiet : MessageLevel).ToString()} -i {Input.InputString} ";
 
-            foreach (var op in outputs)
-                args += $"{op.Options} {(op.Codec != null ? $"-c:a {op.Codec} " : "")}{(op.Format != null ? $"-f {op.Format} " : "")}{op.OutputString} ";
+            foreach (var op in Outputs)
+            {
+                if (!string.IsNullOrWhiteSpace(op.Filters) || op.NormalizeVolume)
+                    args +=
+                        $"-filter_complex \"[0:a]{(op.NormalizeVolume ? "loudnorm" : "acopy")}[in];{(!string.IsNullOrWhiteSpace(op.Filters) ? op.Filters  : "[in]acopy[out]")}\" -map \"[out]\" ";
+                args +=
+                    $"{op.Options} {(op.Codec != null ? $"-c:a {op.Codec} " : "")}{(op.Format != null ? $"-f {op.Format} " : "")}{op.OutputString} ";
+            }
 
             var ffinfo = new ProcessStartInfo
             {
@@ -242,15 +257,11 @@ namespace DSharpBotCore.Entities.Managers
             };
 
             ffmpegProcess = Process.Start(ffinfo);
-            Debug.Assert(ffmpegProcess != null, nameof(ffmpegProcess) + " != null");
             if (Input.IsPipe)
                 Input.StdInAvailiable(ffmpegProcess?.StandardInput);
             pipeOutput?.StdOutAvailiable(ffmpegProcess?.StandardOutput);
 
-            ffmpegTask = Task.Run(delegate
-            {
-                ffmpegProcess.WaitForExit();
-            });
+            ffmpegTask = ffmpegProcess.WaitForExitAsync(token);
         }
 
         public async Task Stop()

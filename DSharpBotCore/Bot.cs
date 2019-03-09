@@ -147,7 +147,8 @@ namespace DSharpBotCore
                     .AddSingleton(CTS)
                     .AddSingleton(Client)
                     .AddSingleton(Interactivity)
-                    .AddSingleton<DownloadManager>()
+                    .AddSingleton(new YoutubeDLWrapper(Config.Voice.Download.YoutubeDlLocation))
+                    .AddSingleton<PlayQueue>()
                     .AddSingleton(this);
             if (Config.Voice.Enabled) services.AddSingleton(Voice);
 

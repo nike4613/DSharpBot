@@ -3,11 +3,13 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
+using DSharpBotCore.Extensions;
 
 namespace DSharpBotCore.Entities.Managers
 {
-    class YoutubeDLWrapper
+    public class YoutubeDLWrapper
     {
         private readonly string ytdlLoc;
 
@@ -44,9 +46,9 @@ namespace DSharpBotCore.Entities.Managers
             }
         }
 
-        private Dictionary<Uri, YTDLInfoStruct> urlInfo = new Dictionary<Uri, YTDLInfoStruct>();
+        private static Dictionary<Uri, YTDLInfoStruct> urlInfo = new Dictionary<Uri, YTDLInfoStruct>();
             
-        public async Task<YTDLInfoStruct[]> GetUrlInfoStructs(Uri url)
+        public async Task<YTDLInfoStruct[]> GetUrlInfoStructs(Uri url, CancellationToken token = default(CancellationToken))
         {
             if (urlInfo.ContainsKey(url))
             {
@@ -55,14 +57,14 @@ namespace DSharpBotCore.Entities.Managers
 
             List<YTDLInfoStruct> infos = new List<YTDLInfoStruct>();
 
-            await RunProcess($"-j {url}", reader => {
+            await RunProcess($"-j --no-playlist {url}", reader => {
                 string line;
                 while ((line = reader.ReadLine()) != null) // line should be json
                 {
                     Console.WriteLine("Got JSON Line");
                     infos.Add(JsonConvert.DeserializeObject<YTDLInfoStruct>(line));
                 }
-            });
+            }, token);
 
             foreach (var info in infos)
                 if (!urlInfo.ContainsKey(info.Url)) urlInfo.Add(info.Url, info);
@@ -70,15 +72,15 @@ namespace DSharpBotCore.Entities.Managers
             return infos.ToArray();
         }
 
-        public async Task StreamInItem(YTDLInfoStruct item, BufferedPipe outputPipe)
+        public async Task StreamInItem(YTDLInfoStruct item, BufferedPipe outputPipe, CancellationToken token = default(CancellationToken))
         {
             await RunProcess($"-q -f bestaudio -o - {item.Url}", stream =>
             {
                 outputPipe.Input = stream.BaseStream;
-            });
+            }, token);
         }
 
-        private async Task RunProcess(string args, Action<StreamReader> recieveOutput)
+        private Task RunProcess(string args, Action<StreamReader> recieveOutput, CancellationToken token = default(CancellationToken))
         {
             var procInfo = new ProcessStartInfo
             {
@@ -88,15 +90,22 @@ namespace DSharpBotCore.Entities.Managers
                 UseShellExecute = false,
             };
 
-            await Task.Run(delegate
+            return Task.Run(async () =>
             {
                 var proc = Process.Start(procInfo);
                 if (proc != null)
                 {
-                    recieveOutput(proc.StandardOutput);
-                    proc.WaitForExit();
+                    try
+                    {
+                        recieveOutput(proc.StandardOutput);
+                        await proc.WaitForExitAsync(token);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        proc.Kill();
+                    }
                 }
-            });
+            }, token);
         }
     }
 }

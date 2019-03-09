@@ -5,7 +5,6 @@ using DSharpPlus.CommandsNext;
 using DSharpPlus.CommandsNext.Attributes;
 using DSharpPlus.VoiceNext;
 using System;
-using System.IO;
 using System.Threading.Tasks;
 using DSharpPlus.Entities;
 
@@ -18,23 +17,18 @@ namespace DSharpBotCore.Modules
         private readonly Bot bot;
         private readonly Configuration config;
 
-        public VoiceCommands(Bot bot, Configuration config)
+        public VoiceCommands(Bot bot, Configuration config, PlayQueue queue, YoutubeDLWrapper ydl)
         {
             this.bot = bot;
             this.config = config;
-            youtubeDl = new YoutubeDLWrapper(config.Voice.Download.YoutubeDlLocation);
-            ffmpegLoc = config.Voice.FFMpegLocation;
-            volume = config.Voice.DefaultVolume;
+            this.queue = queue;
+            ytdl = ydl;
         }
 
-        private readonly YoutubeDLWrapper youtubeDl;
-        private readonly string ffmpegLoc;
-        private FFMpegWrapper ffwrap;
-        private BufferedPipe ytdlPipe;
-        private DiscordVoiceStream dvStream;
+        private PlayQueue queue;
+        private YoutubeDLWrapper ytdl;
 
         bool earRape;
-        double volume;
 
         private async Task RespondTemporary(Task<DiscordMessage> messageTask, bool waitFor = true)
         {
@@ -71,11 +65,12 @@ namespace DSharpBotCore.Modules
                 return;
             }
 
-            await vnext.ConnectAsync(chn);
+            vnc = await vnext.ConnectAsync(chn);
+
+            queue.StartPlayer(new DiscordVoiceStream(vnc)
+                                  { BlockSize = 3840, BlockLength = 20, UseEarRapeVolumeMode = earRape });
             await RespondTemporary(ctx.RespondAsync("👌"));
         }
-
-        bool stopped;
 
         [Command("play"), Description("Plays the song.")]
         public async Task Play(CommandContext ctx, 
@@ -93,102 +88,74 @@ namespace DSharpBotCore.Modules
                 return;
             }
 
-            //vnc.SendSpeaking();
-            await vnc.SendSpeakingAsync();
+            var embed = new DiscordEmbedBuilder();
 
-            if (ffwrap != null)
+            embed.WithTitle("*Looking up info...*")
+                 .WithUserAsAuthor(ctx.User)
+                 .WithColor(new DiscordColor("#352fe0"))
+                 .WithDefaultFooter(bot);
+
+            var lookupMessage = await ctx.RespondAsync(embed: embed);
+
+            var entries = await ytdl.GetUrlInfoStructs(new Uri(url));
+
+            if (entries.Length == 0)
             {
-                await ctx.ErrorWith(bot, "Error playing audio", "Cannot play 2 sounds at a time");
+                embed.WithTitle("Error in lookup")
+                     .WithColor(new DiscordColor("#ff0000"))
+                     .WithDescription("No entries found for URL");
+                var msg = lookupMessage.ModifyAsync(embed: embed.Build());
+                await RespondTemporary(msg);
                 return;
             }
-
-            DiscordMessage lookupMessage = null;
-
-            try
+            if (entries.Length == 1)
             {
-                const string format = "flac";
+                embed.WithTitle($"Added **{entries[0].Title.Sanitize()}**")
+                     .WithImageUrl(entries[0].Thumbnail)
+                     .WithDescription($"**[{entries[0].Title.Sanitize()}]({entries[0].Url})**\n[{entries[0].Author.Sanitize()}]({entries[0].AuthorUri})");
+            }
+            else
+            {
+                embed.WithTitle($"Added **{entries.Length}** items to the queue")
+                     .WithUrl(url);
+                     //.WithDescription($"The playlist has **{entries.Length}** entries.");
+            }
 
-                stopped = false;
-
-                var embed = new DiscordEmbedBuilder();
-
-                embed.WithTitle("*Looking up info...*")
-                     .WithUserAsAuthor(ctx.User)
-                     .WithColor(new DiscordColor("#352fe0"))
-                     .WithDefaultFooter(bot);
-
-                lookupMessage = await ctx.RespondAsync(embed: embed);
-
-                var info = (await youtubeDl.GetUrlInfoStructs(new Uri(url)))[0];
-
-                var file = Path.Combine(config.Voice.Download.DownloadLocation,
-                                        string.Format(YoutubeDLWrapper.YTDLInfoStruct.NameFormat, info.EntryID,
-                                                      info.ExtractorName) + "." + format);
-
-                bool useLocalFile = File.Exists(file);
-
-                ffwrap = new FFMpegWrapper(ffmpegLoc);
-
-                if (useLocalFile)
-                    ffwrap.Input = new FFMpegWrapper.FileInput(config.Voice.Download.DownloadLocation,
-                                                               string.Format(YoutubeDLWrapper.YTDLInfoStruct.NameFormat,
-                                                                             info.EntryID, info.ExtractorName) + "." +
-                                                               format);
-                else
+            var channel = ctx.Channel;
+            foreach (var entry in entries)
+            {
+                queue.Add(new PlayQueue.QueueEntry(entry)
                 {
-                    ytdlPipe = new BufferedPipe {BlockSize = 8192}; // literally just piping from ytdl to ffmpeg
-                    ffwrap.Input = new FFMpegWrapper.PipeInput(ytdlPipe);
-                    ffwrap.Outputs += new FFMpegWrapper.FileOutput(config.Voice.Download.DownloadLocation,
-                                                                   string
-                                                                      .Format(YoutubeDLWrapper.YTDLInfoStruct.NameFormat,
-                                                                              info.EntryID, info.ExtractorName) + "." +
-                                                                   format,
-                                                                   format) {Options = "-ac 2 -ar 64k"};
-                }
-
-                var bpipe = new BufferedPipe {BlockSize = 3840};
-                dvStream = new DiscordVoiceStream(vnc)
-                    {BlockSize = 3840, BlockLength = 20, Volume = volume, UseEarRapeVolumeMode = earRape};
-                bpipe.Outputs += dvStream;
-                ffwrap.Outputs += new FFMpegWrapper.PipeOutput(bpipe, "s16le") {Options = "-ac 2 -ar 48k"};
-                ffwrap.Start();
-
-                embed.WithTitle("Now Playing")
-                     .WithDescription($"**[{info.Title.Sanitize()}]({info.Url})**\n[{info.Author.Sanitize()}]({info.AuthorUri})")
-                     .WithImageUrl(info.Thumbnail)
-                     .WithDefaultFooter(bot);
-
-                var message = lookupMessage.ModifyAsync(embed: embed.Build());
-
-                if (config.Voice.IsNowPlayingConfirmation)
-                    await RespondTemporary(message, false);
-                else
-                    await message;
-
-                if (!useLocalFile) await youtubeDl.StreamInItem(info, ytdlPipe);
-                await bpipe.AwaitEndOfStream;
-                await ffwrap.AwaitProcessEnd;
-
-                ytdlPipe = null;
-                ffwrap = null;
-                dvStream = null;
-
-                if (stopped)
-                    File.Delete(file);
-            }
-            catch (Exception e)
-            {
-                ytdlPipe = null;
-                ffwrap = null;
-
-                lookupMessage?.DeleteAsync("Should never stick around.")?.Wait();
-                await ctx.ErrorWith(bot, "Error playing audio", "PlayUsing() threw an error",
-                                    ($"{e.GetType().Name} in {e.TargetSite.Name}", e.Message));
-                return;
+                    OnPlayStart = () =>
+                    {
+                        var builder = new DiscordEmbedBuilder();
+                        builder.WithTitle("Now Playing")
+                              .WithImageUrl(entry.Thumbnail)
+                              .WithDescription($"**[{entry.Title.Sanitize()}]({entry.Url})**\n[{entry.Author.Sanitize()}]({entry.AuthorUri})")
+                              .WithColor(new DiscordColor("#352fe0"))
+                              .WithDefaultFooter(bot);
+                        channel.SendMessageAsync(embed: builder);
+                    },
+                    OnPlayError = e =>
+                    {
+                        var builder = new DiscordEmbedBuilder();
+                        builder.WithTitle("Error while playing song")
+                               .WithImageUrl(entry.Thumbnail)
+                               .WithDescription($"Song:\n\t**[{entry.Title.Sanitize()}]({entry.Url})**\n\t[{entry.Author.Sanitize()}]({entry.AuthorUri})")
+                               .WithColor(new DiscordColor("#ff0000"))
+                               .WithDefaultFooter(bot);
+                        builder.AddField($"{e.GetType().FullName}: {e.Message}", e.StackTrace);
+                        channel.SendMessageAsync(embed: builder);
+                    }
+                });
             }
 
-            //vnc.SendSpeaking(false);
-            await vnc.SendSpeakingAsync(false); // we're not speaking anymore
+            var message = lookupMessage.ModifyAsync(embed: embed.Build());
+
+            if (config.Voice.IsNowPlayingConfirmation)
+                await RespondTemporary(message, false);
+            else
+                await message;
         }
 
         [Command("volume"), Description("Gets or sets the volume"), Priority(0)]
@@ -199,7 +166,7 @@ namespace DSharpBotCore.Modules
             if (config.Commands.Roll.DeleteTrigger)
                 await ctx.Message.DeleteAsync();
 
-            await ctx.RespondAsync($"The current volume is **{volume:p}**");
+            await ctx.RespondAsync($"The current volume is **{queue.Volume:p}**");
         }
 
         [Command("volume"), Description("Gets or sets the volume"), Priority(1)]
@@ -216,10 +183,9 @@ namespace DSharpBotCore.Modules
                 return;
             }
 
-            volume = newvol / 100f;
-            if (dvStream != null) dvStream.Volume = volume;
+            queue.Volume = newvol / 100f;
 
-            await ctx.RespondAsync($"The current volume is now **{volume:p}**");
+            await ctx.RespondAsync($"The current volume is now **{queue.Volume:p}**");
         }
 
         [Command("earrape"), Description("Gets or sets ear rape mode"), Priority(0)]
@@ -250,12 +216,96 @@ namespace DSharpBotCore.Modules
             string newStateS = newState ? "on" : "off";
 
             earRape = newState;
-            if (dvStream != null) dvStream.UseEarRapeVolumeMode = earRape;
+            if (queue.VoiceStream != null) queue.VoiceStream.UseEarRapeVolumeMode = earRape;
 
             await ctx.RespondAsync($"Ear rape mode is now **{newStateS}**.");
         }
 
-        [Command("stop"), Description("Leaves the voice channel.")]
+        [Command("next"), Description("Continues to the next song."), Priority(2)]
+        public async Task Next(CommandContext ctx)
+        {
+            try
+            {
+                queue.Next();
+                await RespondTemporary(ctx.RespondAsync("Continuing to next."));
+            }
+            catch (Exception e)
+            {
+                await ctx.ErrorWith(bot, "Error continuing to next", "Next() threw an error", ($"{e.GetType().Name} in {e.TargetSite.Name}", e.Message));
+            }
+        }
+        
+        [Command("clear"), Description("Clears the queue."), Priority(2)]
+        public async Task Clear(CommandContext ctx)
+        {
+            try
+            {
+                queue.Clear();
+                await RespondTemporary(ctx.RespondAsync("Queue cleared."));
+            }
+            catch (Exception e)
+            {
+                await ctx.ErrorWith(bot, "Error clearing", "Clear() threw an error", ($"{e.GetType().Name} in {e.TargetSite.Name}", e.Message));
+            }
+        }
+
+        [Command("pause"), Description("Pauses the current song."), Priority(2)]
+        public async Task Pause(CommandContext ctx)
+        {
+            try
+            {
+                queue.PausePlaying();
+                await RespondTemporary(ctx.RespondAsync("Paused."));
+            }
+            catch (Exception e)
+            {
+                await ctx.ErrorWith(bot, "Error pausing", "Pause() threw an error", ($"{e.GetType().Name} in {e.TargetSite.Name}", e.Message));
+            }
+        }
+
+        [Command("resume"), Aliases("res"), Description("Pauses the current song."), Priority(2)]
+        public async Task Resume(CommandContext ctx)
+        {
+            try
+            {
+                queue.ResumePlaying();
+                await RespondTemporary(ctx.RespondAsync("Resumed."));
+            }
+            catch (Exception e)
+            {
+                await ctx.ErrorWith(bot, "Error resuming", "Resume() threw an error", ($"{e.GetType().Name} in {e.TargetSite.Name}", e.Message));
+            }
+        }
+
+        [Command("pausequeue"), Aliases("pauseq"), Description("Pauses the current song."), Priority(2)]
+        public async Task PauseQueue(CommandContext ctx)
+        {
+            try
+            {
+                queue.PauseQueue();
+                await RespondTemporary(ctx.RespondAsync("Paused queue."));
+            }
+            catch (Exception e)
+            {
+                await ctx.ErrorWith(bot, "Error pausing", "PauseQueue() threw an error", ($"{e.GetType().Name} in {e.TargetSite.Name}", e.Message));
+            }
+        }
+
+        [Command("resumequeue"), Aliases("resumeq","resq"), Description("Pauses the current song."), Priority(2)]
+        public async Task ResumeQueue(CommandContext ctx)
+        {
+            try
+            {
+                queue.ResumeQueue();
+                await RespondTemporary(ctx.RespondAsync("Resumed queue."));
+            }
+            catch (Exception e)
+            {
+                await ctx.ErrorWith(bot, "Error resuming", "ResumeQueue() threw an error", ($"{e.GetType().Name} in {e.TargetSite.Name}", e.Message));
+            }
+        }
+
+        [Command("stop"), Description("Stops the music.")]
         public async Task Stop(CommandContext ctx)
         {
             if (config.Commands.MiscDeleteTrigger)
@@ -271,10 +321,9 @@ namespace DSharpBotCore.Modules
             }
 
             try
-            {
-                stopped = true;
-                if (ytdlPipe != null) ytdlPipe.Close();
-                if (ffwrap != null) await ffwrap.Stop();
+            { // todo
+                queue.PauseQueue();
+                queue.Next();
             }
             catch (Exception e)
             {
@@ -299,7 +348,7 @@ namespace DSharpBotCore.Modules
                 return;
             }
 
-            await Stop(ctx);
+            queue.StopPlayer();
 
             vnc.Disconnect();
             await RespondTemporary(ctx.RespondAsync("👌"));

@@ -30,8 +30,6 @@ namespace DSharpBotCore.Modules
         private PlayQueue queue;
         private YoutubeDLWrapper ytdl;
 
-        bool earRape;
-
         private async Task RespondTemporary(Task<DiscordMessage> messageTask, bool waitFor = true)
         {
             var message = await messageTask;
@@ -67,10 +65,9 @@ namespace DSharpBotCore.Modules
                 return;
             }
 
-            vnc = await vnext.ConnectAsync(chn);
+            vnc = await chn.ConnectAsync();
 
-            queue.StartPlayer(new DiscordVoiceStream(vnc)
-                                  { BlockSize = 3840, BlockLength = 20, UseEarRapeVolumeMode = earRape });
+            queue.StartPlayer(vnc);
             await RespondTemporary(ctx.RespondAsync("👌"));
         }
 
@@ -80,16 +77,7 @@ namespace DSharpBotCore.Modules
         {
             if (config.Commands.MiscDeleteTrigger)
                 await ctx.Message.DeleteAsync("Delete trigger.");
-
-            var vnext = ctx.Client.GetVoiceNext();
-
-            var vnc = vnext.GetConnection(ctx.Guild);
-            if (vnc == null)
-            {
-                await ctx.ErrorWith(bot, "Error playing audio", "Not currently connected");
-                return;
-            }
-
+            
             var embed = new DiscordEmbedBuilder();
 
             embed.WithTitle("*Looking up info...*")
@@ -198,7 +186,7 @@ namespace DSharpBotCore.Modules
             if (config.Commands.MiscDeleteTrigger)
                 await ctx.Message.DeleteAsync("Delete trigger.");
 
-            await ctx.RespondAsync($"Ear rape mode is currently **{(earRape ? "on" : "off")}**");
+            await ctx.RespondAsync($"Ear rape mode is currently **{(queue.EarRapeMode ? "on" : "off")}**");
         }
 
         [Command("earrape"), Description("Gets or sets ear rape mode"), Priority(1)]
@@ -216,9 +204,8 @@ namespace DSharpBotCore.Modules
                 await ctx.Message.DeleteAsync("Delete trigger.");
 
             string newStateS = newState ? "on" : "off";
-
-            earRape = newState;
-            if (queue.VoiceStream != null) queue.VoiceStream.UseEarRapeVolumeMode = earRape;
+            
+            queue.EarRapeMode = newState;
 
             await ctx.RespondAsync($"Ear rape mode is now **{newStateS}**.");
         }

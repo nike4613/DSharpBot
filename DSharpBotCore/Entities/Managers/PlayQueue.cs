@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using DSharpPlus.VoiceNext;
 
 namespace DSharpBotCore.Entities.Managers
 {
@@ -51,7 +52,7 @@ namespace DSharpBotCore.Entities.Managers
 
         private readonly Configuration.VoiceObject voiceConfig;
 
-        public bool Loop { get; set; } = false;
+        public bool Loop { get; set; }
 
         public event Action<QueueEntry> PlayStart;
         public event Action<QueueEntry> PlayEnd;
@@ -88,8 +89,11 @@ namespace DSharpBotCore.Entities.Managers
         private FFMpegWrapper currentPlayer;
         private YoutubeDLWrapper ytdl;
         private BufferedPipe currentDiscordPipe;
+        private VoiceTransmitStream currentTransmitStream;
+        
+        public bool EarRapeMode { get; set; }
 
-        internal DiscordVoiceStream VoiceStream { get; private set; }
+        internal VoiceNextConnection VNext { get; private set; }
 
         private Thread playerThread;
 
@@ -100,17 +104,17 @@ namespace DSharpBotCore.Entities.Managers
             set
             {
                 volume = value;
-                if (VoiceStream != null)
-                    VoiceStream.Volume = value;
+                if (currentTransmitStream != null)
+                    currentTransmitStream.VolumeModifier = value;
             }
         }
 
-        internal void StartPlayer(DiscordVoiceStream stream)
+        internal void StartPlayer(VoiceNextConnection connection)
         {
             if (playerThread == null)
             {
-                VoiceStream = stream;
-                stream.Volume = volume;
+                //VoiceStream = stream;
+                VNext = connection;
 
                 stopToken = new CancellationTokenSource();
                 nextToken = new CancellationTokenSource();
@@ -130,8 +134,6 @@ namespace DSharpBotCore.Entities.Managers
 
                 currentDiscordPipe.Close();
                 currentDiscordPipe = null;
-                VoiceStream.Close();
-                VoiceStream = null;
             }
         }
 
@@ -174,6 +176,34 @@ namespace DSharpBotCore.Entities.Managers
             nextToken.Cancel();
         }
 
+        private class EarRapeFilter : IVoiceFilter
+        {
+            private readonly PlayQueue queue;
+
+            public EarRapeFilter(PlayQueue self)
+            {
+                queue = self;
+            }
+
+            public void Transform(Span<short> pcmData, AudioFormat pcmFormat, int duration)
+            {
+                if (queue.EarRapeMode)
+                {
+                    unsafe
+                    {
+                        var slen = pcmData.Length;
+                        var blen = slen * sizeof(short);
+                        fixed (short* data = &pcmData.GetPinnableReference())
+                        {
+                            var bdata = (byte*)data;
+                            for (int i = 0; i < blen; i++)
+                                bdata[i] = (byte)(bdata[i] * 2);
+                        }
+                    }
+                }
+            }
+        }
+
         private static async void PlayerThread(object state)
         {
             var self = state as PlayQueue;
@@ -208,12 +238,19 @@ namespace DSharpBotCore.Entities.Managers
                                                                        item.FileName, item.Format) { Options = "-ac 2 -ar 64k" });
                     }
 
-                    await self.VoiceStream.VNext.SendSpeakingAsync();
+                    //await self.VoiceStream.VNext.SendSpeakingAsync();
+                    self.VNext.SendSpeaking();
+
+                    var voiceStream = self.currentTransmitStream = self.VNext.GetTransmitStream();
+                    //voiceStream.VolumeModifier = self.Volume;
+
+                    voiceStream.InstallFilter(new EarRapeFilter(self));
 
                     var pipe = self.currentDiscordPipe = new BufferedPipe
-                        {BlockSize = self.VoiceStream.BlockSize};
+                        {BlockSize = 3840};
                     pipe.SetToken(stopOrNext.Token);
-                    pipe.Outputs.Add(self.VoiceStream);
+                    pipe.ReadCycleLength = voiceStream.SampleDuration;
+                    pipe.Outputs.Add(voiceStream);
                     ffmpeg.Outputs.Add(new FFMpegWrapper.PipeOutput(pipe, "s16le") { Options = "-ac 2 -ar 48k", NormalizeVolume = !localFile });
                     ffmpeg.Start();
 
@@ -221,11 +258,11 @@ namespace DSharpBotCore.Entities.Managers
                     self.PlayStart?.Invoke(item);
                     
                     if (!localFile) await self.ytdl.StreamInItem(item.Info, ytdlPipe, stopOrNext.Token);
+                    //await self.VNext.WaitForPlaybackFinishAsync();
                     await pipe.AwaitEndOfStream;
                     self.currentDiscordPipe?.Close();
                     self.currentDiscordPipe = null;
                     await ffmpeg.AwaitProcessEnd;
-
                 }
                 catch (TaskCanceledException)
                 {
@@ -245,14 +282,16 @@ namespace DSharpBotCore.Entities.Managers
                             self.PlayEnd?.Invoke(item);
                     }
 
-                    if (self.VoiceStream != null)
-                        await self.VoiceStream.VNext.SendSpeakingAsync(false);
+                    self.VNext?.SendSpeaking(false);
 
                     self.currentDiscordPipe?.Close();
                     self.currentDiscordPipe = null;
                     if (self.currentPlayer != null && self.currentPlayer.AwaitProcessEnd.IsCanceled)
                         await self.currentPlayer.Stop();
                     self.currentPlayer = null;
+
+                    await self.currentTransmitStream?.FlushAsync(CancellationToken.None);
+                    self.currentTransmitStream = null;
 
                     if (!localFile && filename != null && stopOrNext.IsCancellationRequested)
                         File.Delete(filename);

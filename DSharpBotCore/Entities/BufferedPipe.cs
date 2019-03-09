@@ -40,6 +40,8 @@ namespace DSharpBotCore.Entities
         private int blockSize = 3840;
         public int BlockSize { get => blockSize; set => blockSize = value; }
 
+        public int ReadCycleLength { get; set; } = 0;
+
         private readonly ManualResetEventSlim pauseEvent = new ManualResetEventSlim(true);
 
         public void SetToken(CancellationToken token)
@@ -67,12 +69,15 @@ namespace DSharpBotCore.Entities
 
             try
             {
+                input.CopyTo(outputs[0]);
+
                 int amt;
                 while ((amt = input.Read(buffer, 0, buffer.Length)) > 0)
                 {
                     if (tokenSource.IsCancellationRequested) break;
                     foreach (var output in outputs)
                         output.Write(buffer, 0, amt);
+                    Task.Delay(ReadCycleLength, tokenSource.Token).Wait(tokenSource.Token);
                     pauseEvent.Wait(tokenSource.Token);
                 }
             }
@@ -88,7 +93,10 @@ namespace DSharpBotCore.Entities
             finally
             {
                 foreach (var output in outputs)
+                {
+                    output.Flush();
                     output.Close();
+                }
             }
         }
 

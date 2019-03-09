@@ -70,6 +70,7 @@ namespace DSharpBotCore.Entities
                 int amt;
                 while ((amt = input.Read(buffer, 0, buffer.Length)) > 0)
                 {
+                    if (tokenSource.IsCancellationRequested) break;
                     foreach (var output in outputs)
                         output.Write(buffer, 0, amt);
                     pauseEvent.Wait(tokenSource.Token);

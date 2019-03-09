@@ -5,8 +5,10 @@ using DSharpPlus.CommandsNext;
 using DSharpPlus.CommandsNext.Attributes;
 using DSharpPlus.VoiceNext;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using DSharpPlus.Entities;
+using DSharpPlus.Interactivity;
 
 namespace DSharpBotCore.Modules
 {
@@ -163,8 +165,8 @@ namespace DSharpBotCore.Modules
         {
             await ctx.TriggerTypingAsync();
 
-            if (config.Commands.Roll.DeleteTrigger)
-                await ctx.Message.DeleteAsync();
+            if (config.Commands.MiscDeleteTrigger)
+                await ctx.Message.DeleteAsync("Delete trigger.");
 
             await ctx.RespondAsync($"The current volume is **{queue.Volume:p}**");
         }
@@ -174,8 +176,8 @@ namespace DSharpBotCore.Modules
         {
             await ctx.TriggerTypingAsync();
 
-            if (config.Commands.Roll.DeleteTrigger)
-                await ctx.Message.DeleteAsync();
+            if (config.Commands.MiscDeleteTrigger)
+                await ctx.Message.DeleteAsync("Delete trigger.");
 
             if (newvol < 0 || newvol > 100)
             {
@@ -193,8 +195,8 @@ namespace DSharpBotCore.Modules
         {
             await ctx.TriggerTypingAsync();
 
-            if (config.Commands.Roll.DeleteTrigger)
-                await ctx.Message.DeleteAsync();
+            if (config.Commands.MiscDeleteTrigger)
+                await ctx.Message.DeleteAsync("Delete trigger.");
 
             await ctx.RespondAsync($"Ear rape mode is currently **{(earRape ? "on" : "off")}**");
         }
@@ -210,9 +212,9 @@ namespace DSharpBotCore.Modules
         {
             await ctx.TriggerTypingAsync();
 
-            if (config.Commands.Roll.DeleteTrigger)
-                await ctx.Message.DeleteAsync();
-            
+            if (config.Commands.MiscDeleteTrigger)
+                await ctx.Message.DeleteAsync("Delete trigger.");
+
             string newStateS = newState ? "on" : "off";
 
             earRape = newState;
@@ -221,9 +223,46 @@ namespace DSharpBotCore.Modules
             await ctx.RespondAsync($"Ear rape mode is now **{newStateS}**.");
         }
 
+        [Command("loop"), Description("Gets or sets loop mode"), Priority(0)]
+        public async Task GetLoopMode(CommandContext ctx)
+        {
+            await ctx.TriggerTypingAsync();
+
+            if (config.Commands.MiscDeleteTrigger)
+                await ctx.Message.DeleteAsync("Delete trigger.");
+
+            await ctx.RespondAsync($"Looping is currently **{(queue.Loop ? "on" : "off")}**");
+        }
+
+        [Command("loop"), Description("Gets or sets loop mode"), Priority(1)]
+        public async Task SetLoopMode(CommandContext ctx, [Description("The new state, as in 'on' or 'off'")] string sNewState)
+        {
+            await SetLoopMode(ctx, sNewState.ToLower() == "on");
+        }
+
+        [Command("loop"), Description("Gets or sets loop mode"), Priority(2)]
+        public async Task SetLoopMode(CommandContext ctx, [Description("The new state")] bool newState)
+        {
+            await ctx.TriggerTypingAsync();
+
+            if (config.Commands.MiscDeleteTrigger)
+                await ctx.Message.DeleteAsync("Delete trigger.");
+
+            string newStateS = newState ? "on" : "off";
+
+            queue.Loop = newState;
+
+            await ctx.RespondAsync($"Looping is now **{newStateS}**.");
+        }
+
         [Command("next"), Description("Continues to the next song."), Priority(2)]
         public async Task Next(CommandContext ctx)
         {
+            await ctx.TriggerTypingAsync();
+
+            if (config.Commands.MiscDeleteTrigger)
+                await ctx.Message.DeleteAsync("Delete trigger.");
+
             try
             {
                 queue.Next();
@@ -238,6 +277,11 @@ namespace DSharpBotCore.Modules
         [Command("clear"), Description("Clears the queue."), Priority(2)]
         public async Task Clear(CommandContext ctx)
         {
+            await ctx.TriggerTypingAsync();
+
+            if (config.Commands.MiscDeleteTrigger)
+                await ctx.Message.DeleteAsync("Delete trigger.");
+
             try
             {
                 queue.Clear();
@@ -252,6 +296,11 @@ namespace DSharpBotCore.Modules
         [Command("pause"), Description("Pauses the current song."), Priority(2)]
         public async Task Pause(CommandContext ctx)
         {
+            await ctx.TriggerTypingAsync();
+
+            if (config.Commands.MiscDeleteTrigger)
+                await ctx.Message.DeleteAsync("Delete trigger.");
+
             try
             {
                 queue.PausePlaying();
@@ -266,6 +315,11 @@ namespace DSharpBotCore.Modules
         [Command("resume"), Aliases("res"), Description("Pauses the current song."), Priority(2)]
         public async Task Resume(CommandContext ctx)
         {
+            await ctx.TriggerTypingAsync();
+
+            if (config.Commands.MiscDeleteTrigger)
+                await ctx.Message.DeleteAsync("Delete trigger.");
+
             try
             {
                 queue.ResumePlaying();
@@ -280,6 +334,11 @@ namespace DSharpBotCore.Modules
         [Command("pausequeue"), Aliases("pauseq"), Description("Pauses the current song."), Priority(2)]
         public async Task PauseQueue(CommandContext ctx)
         {
+            await ctx.TriggerTypingAsync();
+
+            if (config.Commands.MiscDeleteTrigger)
+                await ctx.Message.DeleteAsync("Delete trigger.");
+
             try
             {
                 queue.PauseQueue();
@@ -294,6 +353,11 @@ namespace DSharpBotCore.Modules
         [Command("resumequeue"), Aliases("resumeq","resq"), Description("Pauses the current song."), Priority(2)]
         public async Task ResumeQueue(CommandContext ctx)
         {
+            await ctx.TriggerTypingAsync();
+
+            if (config.Commands.MiscDeleteTrigger)
+                await ctx.Message.DeleteAsync("Delete trigger.");
+
             try
             {
                 queue.ResumeQueue();
@@ -352,6 +416,75 @@ namespace DSharpBotCore.Modules
 
             vnc.Disconnect();
             await RespondTemporary(ctx.RespondAsync("👌"));
+        }
+
+        [Command("queue"), Description("Shows (part of) the current queue.")]
+        public async Task GetQueue(CommandContext ctx)
+        {
+            await ctx.TriggerTypingAsync();
+
+            if (config.Commands.MiscDeleteTrigger)
+                await ctx.Message.DeleteAsync("Delete trigger.");
+
+            var interact = ctx.Client.GetInteractivity();
+
+            try
+            {
+                DiscordEmbedBuilder embed = null;//new DiscordEmbedBuilder();
+                
+                var pageSize = config.Voice.QueuePageSize;
+
+                var pages = new List<Page>();
+
+                var paused = queue.PauseQueue();
+
+                var queueLen = queue.Count;
+                var pageCount = queueLen / pageSize + 1;
+
+                int i = 0;
+                foreach (var qi in queue)
+                {
+                    if (embed == null)
+                    {
+                        var endRange = (pages.Count + 1) * pageSize;
+                        if (queueLen < endRange) endRange = queueLen;
+                        embed = new DiscordEmbedBuilder()
+                            .WithTitle($"Page **{pages.Count+1}**/**{pageCount}**")
+                            .WithDescription($"The queue currently has **{queueLen}** items, showing **{pages.Count * pageSize + 1}**-**{endRange}**")
+                             //.WithDescription($"Here are the first {count}")
+                            .WithMemberAsAuthor(ctx.Member)
+                            .WithColor(new DiscordColor("#352fe0"))
+                            .WithDefaultFooter(bot);
+                    }
+
+                    embed.AddField($"**{++i}.** *{qi.Title}*",
+                                   $"__[link]({qi.Link})__ by *[{qi.Artist}]({qi.ArtistLink})*");
+
+                    if (i >= (pages.Count + 1)*pageSize)
+                    {
+                        pages.Add(new Page
+                        {
+                            Embed = embed
+                        });
+                        embed = null;
+                    }
+                }
+
+                pages.Add(new Page
+                {
+                    Embed = embed
+                });
+
+                if (paused)
+                    queue.ResumeQueue();
+
+                await interact.SendPaginatedMessage(ctx.Channel, ctx.User, pages);
+                //await ctx.RespondAsync(embed: embed);
+            }
+            catch (Exception e)
+            {
+                await ctx.ErrorWith(bot, "Error viewing queue", null, ($"{e.GetType().Name} in {e.TargetSite.Name}", e.Message), ("", e.StackTrace));
+            }
         }
     }
 }

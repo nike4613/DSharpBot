@@ -111,6 +111,9 @@ namespace DSharpBotCore.Entities
 
             [JsonProperty("deleteNowPlayingAsConfirmation", Required = Required.DisallowNull)]
             public bool IsNowPlayingConfirmation;
+
+            [JsonProperty("queuePageSize", Required = Required.DisallowNull)]
+            public int QueuePageSize = 10;
         }
 
         [JsonProperty("voice", Required = Required.DisallowNull)]

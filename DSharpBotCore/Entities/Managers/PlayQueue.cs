@@ -51,6 +51,8 @@ namespace DSharpBotCore.Entities.Managers
 
         private readonly Configuration.VoiceObject voiceConfig;
 
+        public bool Loop { get; set; } = false;
+
         public event Action<QueueEntry> PlayStart;
         public event Action<QueueEntry> PlayEnd;
         public event Action<QueueEntry, Exception> PlayError;
@@ -65,7 +67,7 @@ namespace DSharpBotCore.Entities.Managers
         public void Add(YoutubeDLWrapper.YTDLInfoStruct ytdlInfo, string format = "flac") =>
             Add(new QueueEntry(ytdlInfo) { Format = format });
 
-        public void Add(IEnumerable<YoutubeDLWrapper.YTDLInfoStruct> infos, string format = "flac")
+        public void AddRange(IEnumerable<YoutubeDLWrapper.YTDLInfoStruct> infos, string format = "flac")
         {
             foreach (var item in infos)
                 Add(item, format);
@@ -73,13 +75,14 @@ namespace DSharpBotCore.Entities.Managers
 
         public void Clear()
         {
-            PauseQueue();
+            var paused = PauseQueue();
 
             while (TryTake(out _, TimeSpan.Zero))
             {
             }
 
-            ResumeQueue();
+            if (paused)
+                ResumeQueue();
         }
 
         private FFMpegWrapper currentPlayer;
@@ -125,6 +128,8 @@ namespace DSharpBotCore.Entities.Managers
                 playerThread.Join();
                 playerThread = null;
 
+                currentDiscordPipe.Close();
+                currentDiscordPipe = null;
                 VoiceStream.Close();
                 VoiceStream = null;
             }
@@ -251,12 +256,20 @@ namespace DSharpBotCore.Entities.Managers
 
                     if (!localFile && filename != null && stopOrNext.IsCancellationRequested)
                         File.Delete(filename);
+
+                    if (self.Loop) self.Add(item, CancellationToken.None);
                 }
 
                 if (self.nextToken.IsCancellationRequested) // reset it
                     self.nextToken = new CancellationTokenSource();
 
-                if (!self.pauseEvent.Wait(TimeSpan.FromMilliseconds(-1), self.stopToken.Token)) return;
+                try
+                {
+                    if (!self.pauseEvent.Wait(TimeSpan.FromMilliseconds(-1), self.stopToken.Token)) return;
+                }
+                catch (OperationCanceledException)
+                {
+                }
             }
         }
 

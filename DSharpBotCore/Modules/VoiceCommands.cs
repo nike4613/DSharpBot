@@ -81,15 +81,6 @@ namespace DSharpBotCore.Modules
             if (config.Commands.MiscDeleteTrigger)
                 await ctx.Message.DeleteAsync("Delete trigger.");
 
-            var vnext = ctx.Client.GetVoiceNext();
-
-            var vnc = vnext.GetConnection(ctx.Guild);
-            if (vnc == null)
-            {
-                await ctx.ErrorWith(bot, "Error playing audio", "Not currently connected");
-                return;
-            }
-
             var embed = new DiscordEmbedBuilder();
 
             embed.WithTitle("*Looking up info...*")

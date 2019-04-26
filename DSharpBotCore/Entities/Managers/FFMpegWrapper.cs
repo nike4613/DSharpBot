@@ -81,14 +81,83 @@ namespace DSharpBotCore.Entities.Managers
 
         public interface IInput
         {
+            string Options { get; }
+
             bool IsPipe { get; }
             string InputString { get; }
 
-            void StdInAvailiable(StreamWriter writer);
+            void StdInAvailable(StreamWriter writer);
+        }
+
+        public class StreamInput : Stream, IInput
+        {
+            public override void Flush()
+            {
+                stdinStream.Flush();
+            }
+
+            public override Task FlushAsync(CancellationToken cancellationToken)
+            {
+                return stdinStream.BaseStream.FlushAsync(cancellationToken);
+            }
+
+            public override int Read(byte[] buffer, int offset, int count)
+            {
+                throw new InvalidOperationException();
+            }
+
+            public override long Seek(long offset, SeekOrigin origin)
+            {
+                throw new InvalidOperationException();
+            }
+
+            public override void SetLength(long value)
+            {
+                throw new InvalidOperationException();
+            }
+
+            public override void Write(byte[] buffer, int offset, int count)
+            {
+                stdinStream.BaseStream.Write(buffer, offset, count);
+            }
+
+            public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            {
+                return stdinStream.BaseStream.WriteAsync(buffer, offset, count, cancellationToken);
+            }
+
+            public override void Close()
+            {
+                stdinStream.BaseStream.Close();
+                base.Close();
+            }
+
+            public override bool CanRead => false;
+            public override bool CanSeek => false;
+            public override bool CanWrite => true;
+            public override long Length => throw new InvalidOperationException();
+
+            public override long Position
+            {
+                get => 0;
+                set => throw new InvalidOperationException();
+            }
+
+            public string Options { get; set; }
+            public bool IsPipe => true;
+            public string InputString => "pipe:";
+
+            private StreamWriter stdinStream;
+
+            public void StdInAvailable(StreamWriter writer)
+            {
+                stdinStream = writer;
+            }
         }
 
         public class PipeInput : IInput
         {
+            public string Options => "";
             public bool IsPipe => true;
 
             public string InputString => "pipe:"; // pipe from stdin
@@ -100,7 +169,7 @@ namespace DSharpBotCore.Entities.Managers
                 this.pipe = pipe;
             }
 
-            public void StdInAvailiable(StreamWriter writer)
+            public void StdInAvailable(StreamWriter writer)
             {
                 pipe.Outputs.Add(writer.BaseStream);
             }
@@ -108,6 +177,8 @@ namespace DSharpBotCore.Entities.Managers
 
         public class FileInput : IInput
         {
+            public string Options => "";
+
             public FileInput(string filepath, string filename)
             {
                 this.filepath = CoerceValidFilePath(filepath);
@@ -120,7 +191,7 @@ namespace DSharpBotCore.Entities.Managers
             private string filename;
             public string InputString => $@"""{Path.Combine(filepath, filename)}""";
 
-            public void StdInAvailiable(StreamWriter writer)
+            public void StdInAvailable(StreamWriter writer)
             { // shouldn't be called since not flagged as a pipe
                 throw new NotImplementedException();
             }
@@ -236,7 +307,7 @@ namespace DSharpBotCore.Entities.Managers
 
             var pipeOutput = Outputs.FirstOrDefault(op => op.IsPipe);
 
-            var args = $"-hide_banner -v {(redirectStdOut ? LogLevel.quiet : MessageLevel).ToString()} -i {Input.InputString} ";
+            var args = $"-hide_banner -v {(redirectStdOut ? LogLevel.quiet : MessageLevel).ToString()} {Input.Options} -i {Input.InputString} ";
 
             foreach (var op in Outputs)
             {
@@ -258,7 +329,7 @@ namespace DSharpBotCore.Entities.Managers
 
             ffmpegProcess = Process.Start(ffinfo);
             if (Input.IsPipe)
-                Input.StdInAvailiable(ffmpegProcess?.StandardInput);
+                Input.StdInAvailable(ffmpegProcess?.StandardInput);
             pipeOutput?.StdOutAvailiable(ffmpegProcess?.StandardOutput);
 
             ffmpegTask = ffmpegProcess.WaitForExitAsync(token);

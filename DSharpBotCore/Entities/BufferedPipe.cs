@@ -85,6 +85,9 @@ namespace DSharpBotCore.Entities
             catch (OperationCanceledException)
             {
             }
+            catch (InvalidOperationException)
+            {
+            }
             finally
             {
                 foreach (var output in outputs)

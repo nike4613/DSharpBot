@@ -114,6 +114,25 @@ namespace DSharpBotCore.Entities
 
             [JsonProperty("queuePageSize", Required = Required.DisallowNull)]
             public int QueuePageSize = 10;
+
+            public class RecordingObject
+            {
+                [JsonProperty("enable", Required = Required.DisallowNull)]
+                public bool Enable = true;
+
+                [JsonProperty("storeLocation", Required = Required.DisallowNull)]
+                public string DownloadLocation = "recordings";
+
+                [JsonProperty("format", Required = Required.DisallowNull)]
+                public string DownloadFormat = "flac";
+
+                [JsonProperty("nameFormat", Required = Required.DisallowNull)]
+                public string NameFormat = "{Member.Username}_{Member.Discriminator}.{Index}.{Date:yyyy-MM-DD_HH.mm.ss}";
+            }
+
+            [JsonProperty("recording", Required = Required.DisallowNull)]
+            public RecordingObject Recording = new RecordingObject();
+
         }
 
         [JsonProperty("voice", Required = Required.DisallowNull)]

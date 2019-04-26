@@ -137,7 +137,10 @@ namespace DSharpBotCore
             });
 
             // Don't use voice if not enabled
-            if (Config.Voice.Enabled) Voice = Client.UseVoiceNext(new VoiceNextConfiguration());
+            if (Config.Voice.Enabled) Voice = Client.UseVoiceNext(new VoiceNextConfiguration()
+            {
+                EnableIncoming = Config.Voice.Recording.Enable
+            });
 
             CTS = new CancellationTokenSource();
 
@@ -150,7 +153,8 @@ namespace DSharpBotCore
                     .AddSingleton(new YoutubeDLWrapper(Config.Voice.Download.YoutubeDlLocation))
                     .AddSingleton<PlayQueue>()
                     .AddSingleton(this);
-            if (Config.Voice.Enabled) services.AddSingleton(Voice);
+            if (Config.Voice.Enabled)
+                services.AddSingleton(Voice);
 
             var serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions());
 
@@ -178,8 +182,12 @@ namespace DSharpBotCore
             }
 
             // Don't use voice if not enabled
-            if (Config.Voice.Enabled) Commands.RegisterCommands<VoiceCommands>();
-
+            if (Config.Voice.Enabled)
+            {
+                Commands.RegisterCommands<VoiceCommands>();
+                Commands.RegisterCommands<Recording>();
+            }
+            
             Client.ClientErrored += Client_ClientError;
             Client.Ready += Client_Ready;
         }

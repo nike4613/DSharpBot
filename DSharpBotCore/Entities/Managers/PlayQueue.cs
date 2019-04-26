@@ -128,7 +128,7 @@ namespace DSharpBotCore.Entities.Managers
                 playerThread.Join();
                 playerThread = null;
 
-                currentDiscordPipe.Close();
+                currentDiscordPipe?.Close();
                 currentDiscordPipe = null;
                 VoiceStream.Close();
                 VoiceStream = null;
@@ -245,8 +245,15 @@ namespace DSharpBotCore.Entities.Managers
                             self.PlayEnd?.Invoke(item);
                     }
 
-                    if (self.VoiceStream != null)
-                        await self.VoiceStream.VNext.SendSpeakingAsync(false);
+                    try
+                    {
+                        if (self.VoiceStream?.VNext != null)
+                            await self.VoiceStream.VNext.SendSpeakingAsync(false);
+                    }
+                    catch (InvalidOperationException)
+                    {
+
+                    }
 
                     self.currentDiscordPipe?.Close();
                     self.currentDiscordPipe = null;
@@ -269,6 +276,7 @@ namespace DSharpBotCore.Entities.Managers
                 }
                 catch (OperationCanceledException)
                 {
+                    return;
                 }
             }
         }

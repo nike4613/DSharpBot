@@ -170,9 +170,9 @@ namespace DSharpBotCore.Modules
             if (config.Commands.MiscDeleteTrigger)
                 await ctx.Message.DeleteAsync("Delete trigger.");
 
-            if (newvol < 0 || newvol > 100)
+            if (newvol < 0 || newvol > 250)
             {
-                await ctx.ErrorWith(bot, "Volume out of range", "Number must be between 0 and 100!");
+                await ctx.ErrorWith(bot, "Volume out of range", "Number must be between 0 and 250!");
                 return;
             }
 
@@ -430,47 +430,60 @@ namespace DSharpBotCore.Modules
                 var paused = queue.PauseQueue();
 
                 var queueLen = queue.Count;
-                var pageCount = queueLen / pageSize + 1;
+                var pageCount = (queueLen-1) / pageSize + 1;
 
-                int i = 0;
-                foreach (var qi in queue)
+                if (queueLen != 0)
                 {
-                    if (embed == null)
+                    int i = 0;
+                    foreach (var qi in queue)
                     {
-                        var endRange = (pages.Count + 1) * pageSize;
-                        if (queueLen < endRange) endRange = queueLen;
-                        embed = new DiscordEmbedBuilder()
-                            .WithTitle($"Page **{pages.Count+1}**/**{pageCount}**")
-                            .WithDescription($"The queue currently has **{queueLen}** items, showing **{pages.Count * pageSize + 1}**-**{endRange}**")
-                             //.WithDescription($"Here are the first {count}")
-                            .WithMemberAsAuthor(ctx.Member)
-                            .WithColor(new DiscordColor("#352fe0"))
-                            .WithDefaultFooter(bot);
+                        if (embed == null)
+                        {
+                            var endRange = (pages.Count + 1) * pageSize;
+                            if (queueLen < endRange) endRange = queueLen;
+                            embed = new DiscordEmbedBuilder()
+                                   .WithTitle($"Page **{pages.Count + 1}**/**{pageCount}**")
+                                   .WithDescription($"The queue currently has **{queueLen}** items, showing **{pages.Count * pageSize + 1}**-**{endRange}**")
+                                    //.WithDescription($"Here are the first {count}")
+                                   .WithMemberAsAuthor(ctx.Member)
+                                   .WithColor(new DiscordColor("#352fe0"))
+                                   .WithDefaultFooter(bot);
+                        }
+
+                        embed.AddField($"**{++i}.** *{qi.Title}*",
+                                       $"__[link]({qi.Link})__ by *[{qi.Artist}]({qi.ArtistLink})*");
+
+                        if (i >= (pages.Count + 1) * pageSize)
+                        {
+                            pages.Add(new Page
+                            {
+                                Embed = embed
+                            });
+                            embed = null;
+                        }
                     }
 
-                    embed.AddField($"**{++i}.** *{qi.Title}*",
-                                   $"__[link]({qi.Link})__ by *[{qi.Artist}]({qi.ArtistLink})*");
-
-                    if (i >= (pages.Count + 1)*pageSize)
-                    {
+                    if (embed != null)
                         pages.Add(new Page
                         {
                             Embed = embed
                         });
-                        embed = null;
-                    }
+
+                    if (paused)
+                        queue.ResumeQueue();
+
+                    await interact.SendPaginatedMessage(ctx.Channel, ctx.User, pages);
                 }
-
-                pages.Add(new Page
+                else
                 {
-                    Embed = embed
-                });
-
-                if (paused)
-                    queue.ResumeQueue();
-
-                await interact.SendPaginatedMessage(ctx.Channel, ctx.User, pages);
-                //await ctx.RespondAsync(embed: embed);
+                    embed = new DiscordEmbedBuilder()
+                           .WithTitle("Page **1**/**1**")
+                           .WithDescription($"*The queue is empty*")
+                           .WithMemberAsAuthor(ctx.Member)
+                           .WithColor(new DiscordColor("#352fe0"))
+                           .WithDefaultFooter(bot);
+                    await ctx.RespondAsync(embed: embed);
+                }
             }
             catch (Exception e)
             {

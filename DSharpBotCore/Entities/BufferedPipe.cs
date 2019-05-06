@@ -32,7 +32,7 @@ namespace DSharpBotCore.Entities
             {
                 input = value;
                 if (streamProcessorTask == null)
-                    streamProcessorTask = Task.Run((Action)_IOPortTask, tokenSource.Token);
+                    streamProcessorTask = Task.Run(_IOPortTask, tokenSource.Token);
             }
         }
 

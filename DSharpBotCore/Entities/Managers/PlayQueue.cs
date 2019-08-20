@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DSharpPlus.VoiceNext;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -89,7 +90,8 @@ namespace DSharpBotCore.Entities.Managers
         private YoutubeDLWrapper ytdl;
         private BufferedPipe currentDiscordPipe;
 
-        internal DiscordVoiceStream VoiceStream { get; private set; }
+        internal VoiceTransmitStream VoiceStream { get; private set; }
+        internal VoiceNextConnection VNext { get; private set; }
 
         private Thread playerThread;
 
@@ -101,16 +103,17 @@ namespace DSharpBotCore.Entities.Managers
             {
                 volume = value;
                 if (VoiceStream != null)
-                    VoiceStream.Volume = value;
+                    VoiceStream.VolumeModifier = value;
             }
         }
 
-        internal void StartPlayer(DiscordVoiceStream stream)
+        internal void StartPlayer(VoiceNextConnection vnc)
         {
             if (playerThread == null)
             {
-                VoiceStream = stream;
-                stream.Volume = volume;
+                VNext = vnc;
+                VoiceStream = vnc.GetTransmitStream();
+                VoiceStream.VolumeModifier = volume;
 
                 stopToken = new CancellationTokenSource();
                 nextToken = new CancellationTokenSource();
@@ -208,10 +211,9 @@ namespace DSharpBotCore.Entities.Managers
                                                                        item.FileName, item.Format) { Options = "-ac 2 -ar 64k" });
                     }
 
-                    await self.VoiceStream.VNext.SendSpeakingAsync();
+                    self.VNext.SendSpeaking(true);
 
-                    var pipe = self.currentDiscordPipe = new BufferedPipe
-                        {BlockSize = self.VoiceStream.BlockSize};
+                    var pipe = self.currentDiscordPipe = new BufferedPipe();
                     pipe.SetToken(stopOrNext.Token);
                     pipe.Outputs.Add(self.VoiceStream);
                     ffmpeg.Outputs.Add(new FFMpegWrapper.PipeOutput(pipe, "s16le") { Options = "-ac 2 -ar 48k", NormalizeVolume = !localFile });
@@ -222,9 +224,10 @@ namespace DSharpBotCore.Entities.Managers
                     
                     if (!localFile) await self.ytdl.StreamInItem(item.Info, ytdlPipe, stopOrNext.Token);
                     await pipe.AwaitEndOfStream;
+                    await ffmpeg.AwaitProcessEnd;
+                    await self.VNext.WaitForPlaybackFinishAsync();
                     self.currentDiscordPipe?.Close();
                     self.currentDiscordPipe = null;
-                    await ffmpeg.AwaitProcessEnd;
 
                 }
                 catch (TaskCanceledException)
@@ -247,8 +250,8 @@ namespace DSharpBotCore.Entities.Managers
 
                     try
                     {
-                        if (self.VoiceStream?.VNext != null)
-                            await self.VoiceStream.VNext.SendSpeakingAsync(false);
+                        if (self?.VNext != null)
+                            self.VNext.SendSpeaking(false);
                     }
                     catch (InvalidOperationException)
                     {

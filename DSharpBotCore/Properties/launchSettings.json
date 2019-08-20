@@ -2,7 +2,7 @@
   "profiles": {
     "DSharpBotCore": {
       "commandName": "Project",
-      "commandLineArgs": "\"thehunt.json\""
+      "commandLineArgs": "\"icons.json\""
     }
   }
 }

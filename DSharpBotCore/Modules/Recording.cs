@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
 using SmartFormat;
+using DSharpPlus.VoiceNext.EventArgs;
 
 namespace DSharpBotCore.Modules
 {
@@ -115,7 +116,7 @@ namespace DSharpBotCore.Modules
                 var ff = new FFMpegWrapper(voiceConfig.FFMpegLocation);
                 var fstreamOut = new FFMpegWrapper.StreamInput()
                 {
-                    Options = "-c:a 2 -f s16le -r:a 48000"
+                    Options = "-f s16le -ar 48000 -ac 2"
                 };
                 ff.Input = fstreamOut;
                 ff.Outputs.Add(new FFMpegWrapper.FileOutput(recordConfig.DownloadLocation, filename,
@@ -127,8 +128,7 @@ namespace DSharpBotCore.Modules
             else
                 streamOut = value.WriteStream;
 
-            var buf = e.Voice.ToArray();
-            await streamOut.WriteAsync(buf, 0, buf.Length);
+            await streamOut.WriteAsync(e.PcmData);
             await streamOut.FlushAsync();
         }
     }

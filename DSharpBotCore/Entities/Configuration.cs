@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using DSharpPlus;
 using DSharpPlus.Interactivity;
+using DSharpPlus.Interactivity.Enums;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
@@ -148,8 +149,11 @@ namespace DSharpBotCore.Entities
                 [JsonProperty("timeout", Required = Required.DisallowNull), JsonConverter(typeof(TimeSpanConverter))]
                 public TimeSpan Timeout = TimeSpan.FromMinutes(5);
 
-                [JsonProperty("behaviour", Required = Required.DisallowNull), JsonConverter(typeof(StringEnumConverter))]
-                public TimeoutBehaviour Behaviour = TimeoutBehaviour.DeleteMessage;
+                [JsonProperty("deletion", Required = Required.DisallowNull), JsonConverter(typeof(StringEnumConverter))]
+                public PaginationDeletion Deletion = PaginationDeletion.DeleteMessage;
+
+                [JsonProperty("behavior", Required = Required.DisallowNull), JsonConverter(typeof(StringEnumConverter))]
+                public PaginationBehaviour Behavior = PaginationBehaviour.Default;
             }
 
             [JsonProperty("pagination", Required = Required.DisallowNull)]

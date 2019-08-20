@@ -131,8 +131,8 @@ namespace DSharpBotCore
 
             Interactivity = Client.UseInteractivity(new InteractivityConfiguration
             {
-                PaginationBehavior = Config.Interactivity.Pagination.Behaviour,
-                PaginationTimeout = Config.Interactivity.Pagination.Timeout,
+                PaginationBehaviour = Config.Interactivity.Pagination.Behavior,
+                PaginationDeletion = Config.Interactivity.Pagination.Deletion,
                 Timeout = Config.Interactivity.Timeout
             });
 

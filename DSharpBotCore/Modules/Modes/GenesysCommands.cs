@@ -76,6 +76,8 @@ namespace DSharpBotCore.Modules.Modes
         {
             try
             {
+                var interact = ctx.Client.GetInteractivity();
+
                 await ctx.TriggerTypingAsync();
 
                 if (Config.Commands.Roll.DeleteTrigger)
@@ -105,7 +107,8 @@ namespace DSharpBotCore.Modules.Modes
 
                 while (true)
                 {
-                    var reaction = await message.WaitForAnyReactionAsync();
+                    var reactionResult = await interact.WaitForReactionAsync(r => true);
+                    var reaction = reactionResult.Result;
                     if (!reaction.User.Equals(ctx.Message.Author))
                         await message.DeleteReactionAsync(reaction.Emoji, reaction.User, "Cannot choose dice");
                     else
@@ -130,7 +133,7 @@ namespace DSharpBotCore.Modules.Modes
                             var field = beforeRollEmbed.Fields.First(em => em.Name == reaction.Emoji.ToString());
                             field.Value = toRollDice[type].ToString();
 
-                            await message.ModifyAsync(embed: Optional<DiscordEmbed>.FromValue(beforeRollEmbed));
+                            await message.ModifyAsync(embed: new Optional<DiscordEmbed>(embedBase));
                             await message.DeleteReactionAsync(reaction.Emoji, reaction.User, "Reaction acknowledged");
                         }
                         else

@@ -1,9 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <Import Project="..\netfx.props" />
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
     <StartupObject>DSharpBotCore.Program</StartupObject>
     <AssemblyVersion>0.2.0.0</AssemblyVersion>
   </PropertyGroup>
@@ -21,6 +21,8 @@
     <None Remove="libs\ffprobe.exe" />
     <None Remove="libs\libopus.dll" />
     <None Remove="libs\libsodium.dll" />
+    <None Remove="libs\opus.dll" />
+    <None Remove="libs\sodium.dll" />
     <None Remove="libs\youtube-dl.exe" />
   </ItemGroup>
 
@@ -40,13 +42,25 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="DSharpPlus" Version="4.0.0-nightly-00560" />
-    <PackageReference Include="DSharpPlus.CommandsNext" Version="4.0.0-nightly-00560" />
-    <PackageReference Include="DSharpPlus.Interactivity" Version="4.0.0-nightly-00560" />
-    <PackageReference Include="DSharpPlus.VoiceNext" Version="4.0.0-nightly-00560" />
+    <PackageReference Include="DSharpPlus" Version="4.0.0-nightly-00600" />
+    <PackageReference Include="DSharpPlus.CommandsNext" Version="4.0.0-nightly-00600" />
+    <PackageReference Include="DSharpPlus.Interactivity" Version="4.0.0-nightly-00600" />
+    <PackageReference Include="DSharpPlus.VoiceNext" Version="4.0.0-nightly-00600" />
     <PackageReference Include="MathParser.org-mXparser" Version="4.3.3" />
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
     <PackageReference Include="SmartFormat.NET" Version="2.4.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="libs\opus.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="libs\sodium.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>

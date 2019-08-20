@@ -30,7 +30,7 @@ namespace DSharpBotCore.Modules
         private PlayQueue queue;
         private YoutubeDLWrapper ytdl;
 
-        bool earRape;
+        //bool earRape;
 
         private async Task RespondTemporary(Task<DiscordMessage> messageTask, bool waitFor = true)
         {
@@ -69,8 +69,7 @@ namespace DSharpBotCore.Modules
 
             vnc = await vnext.ConnectAsync(chn);
 
-            queue.StartPlayer(new DiscordVoiceStream(vnc)
-                                  { BlockSize = 3840, BlockLength = 20, UseEarRapeVolumeMode = earRape });
+            queue.StartPlayer(vnc);
             await RespondTemporary(ctx.RespondAsync("👌"));
         }
 
@@ -181,7 +180,7 @@ namespace DSharpBotCore.Modules
             await ctx.RespondAsync($"The current volume is now **{queue.Volume:p}**");
         }
 
-        [Command("earrape"), Description("Gets or sets ear rape mode"), Priority(0)]
+        /*[Command("earrape"), Description("Gets or sets ear rape mode"), Priority(0)]
         public async Task GetEarRapeMode(CommandContext ctx)
         {
             await ctx.TriggerTypingAsync();
@@ -212,7 +211,7 @@ namespace DSharpBotCore.Modules
             if (queue.VoiceStream != null) queue.VoiceStream.UseEarRapeVolumeMode = earRape;
 
             await ctx.RespondAsync($"Ear rape mode is now **{newStateS}**.");
-        }
+        }*/
 
         [Command("loop"), Description("Gets or sets loop mode"), Priority(0)]
         public async Task GetLoopMode(CommandContext ctx)
@@ -455,24 +454,18 @@ namespace DSharpBotCore.Modules
 
                         if (i >= (pages.Count + 1) * pageSize)
                         {
-                            pages.Add(new Page
-                            {
-                                Embed = embed
-                            });
+                            pages.Add(new Page(embed: embed));
                             embed = null;
                         }
                     }
 
                     if (embed != null)
-                        pages.Add(new Page
-                        {
-                            Embed = embed
-                        });
+                        pages.Add(new Page(embed: embed));
 
                     if (paused)
                         queue.ResumeQueue();
 
-                    await interact.SendPaginatedMessage(ctx.Channel, ctx.User, pages);
+                    await interact.SendPaginatedMessageAsync(ctx.Channel, ctx.User, pages);
                 }
                 else
                 {

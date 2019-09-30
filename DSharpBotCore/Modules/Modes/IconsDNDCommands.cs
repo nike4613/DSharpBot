@@ -83,7 +83,7 @@ namespace DSharpBotCore.Modules.Modes
             var random = new Random();
             var results = Enumerable.Repeat(0, number).Select(_ => random.Next(0, face));
             if (weights.ContainsKey(face))
-                results = results.Select(i => (i + weights[face]) % face);
+                results = results.Select(i => (i + weights[face] + face) % face);
             results = results.Select(i => i + 1);
             var result = results.ToArray();
 

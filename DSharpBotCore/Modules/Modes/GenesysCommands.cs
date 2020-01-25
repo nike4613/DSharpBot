@@ -107,7 +107,8 @@ namespace DSharpBotCore.Modules.Modes
 
                 while (true)
                 {
-                    var reactionResult = await interact.WaitForReactionAsync(r => true);
+                    // TODO: figure out how to not get ratelimited to fuck for removing the reactions
+                    var reactionResult = await interact.WaitForReactionAsync(r => true, message, authMember);
                     var reaction = reactionResult.Result;
                     if (!reaction.User.Equals(ctx.Message.Author))
                         await message.DeleteReactionAsync(reaction.Emoji, reaction.User, "Cannot choose dice");
@@ -115,7 +116,9 @@ namespace DSharpBotCore.Modules.Modes
                     {
                         if (reaction.Emoji.Equals(cancelEmoji))
                         {
-                            await message.DeleteAsync("Cancelled");
+                            await message.DeleteAsync();
+                            await ctx.RespondAsync(embed: 
+                                new DiscordEmbedBuilder(embedBase).WithTitle("Roll canceled").Build());
                             return;
                         }
 
@@ -133,7 +136,7 @@ namespace DSharpBotCore.Modules.Modes
                             var field = beforeRollEmbed.Fields.First(em => em.Name == reaction.Emoji.ToString());
                             field.Value = toRollDice[type].ToString();
 
-                            await message.ModifyAsync(embed: new Optional<DiscordEmbed>(embedBase));
+                            await message.ModifyAsync(embed: new Optional<DiscordEmbed>(beforeRollEmbed));
                             await message.DeleteReactionAsync(reaction.Emoji, reaction.User, "Reaction acknowledged");
                         }
                         else
@@ -228,7 +231,7 @@ namespace DSharpBotCore.Modules.Modes
                         }
 
                     if (string.IsNullOrWhiteSpace(results))
-                        rollEmbed.WithDescription("*No results.*");
+                        rollEmbed.AddField("", "*No results.*", inline: true);
                     else
                         rollEmbed.AddField("Roll Results", results);
                 }
@@ -249,7 +252,7 @@ namespace DSharpBotCore.Modules.Modes
                         rollEmbed.AddField("Persisted Effect", results);
                 }
 
-                await ctx.RespondAsync(embed: rollEmbed);
+                await ctx.RespondAsync(embed: rollEmbed.Build());
             }
             catch (Exception e)
             {

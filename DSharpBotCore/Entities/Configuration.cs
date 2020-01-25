@@ -10,6 +10,7 @@ using Newtonsoft.Json.Linq;
 
 namespace DSharpBotCore.Entities
 {
+
     public class Configuration
     {
 
@@ -247,6 +248,49 @@ namespace DSharpBotCore.Entities
 
                 [JsonProperty("genesysDice")]
                 public GenesysDiceObject GenesysDice;
+
+                public class GenesysCritsObject
+                {
+                    [JsonProperty("rollRange", Required = Required.Always)]
+                    public Range RollRange = new Range();
+                    [JsonProperty("critAdder", Required = Required.Always)]
+                    public int CritAdder;
+
+                    public class CritResult
+                    {
+                        [JsonProperty("range", Required = Required.Always)]
+                        public Range Range = new Range();
+                        [JsonProperty("name", Required = Required.Always)]
+                        public string Name;
+                        [JsonProperty("description", Required = Required.Always)]
+                        public string Description;
+
+                        public struct CostsObject
+                        {
+                            [JsonProperty("boost", Required = Required.DisallowNull)]
+                            public int Boost;
+                            [JsonProperty("setback", Required = Required.DisallowNull)]
+                            public int Setback;
+                            [JsonProperty("ability", Required = Required.DisallowNull)]
+                            public int Ability;
+                            [JsonProperty("difficulty", Required = Required.DisallowNull)]
+                            public int Difficulty;
+                            [JsonProperty("proficiency", Required = Required.DisallowNull)]
+                            public int Proficiency;
+                            [JsonProperty("challenge", Required = Required.DisallowNull)]
+                            public int Challenge;
+                        }
+
+                        [JsonProperty("cost", Required = Required.DisallowNull)]
+                        public CostsObject Costs;
+                    }
+
+                    [JsonProperty("results", Required = Required.DisallowNull)]
+                    public List<CritResult> Results = new List<CritResult>();
+                }
+
+                [JsonProperty("genesysCrits")]
+                public GenesysCritsObject GenesysCrits;
 
                 public class ReactionObject
                 {

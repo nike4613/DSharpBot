@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using DSharpBotCore.Entities;
 using DSharpBotCore.Extensions;
@@ -9,6 +10,7 @@ using DSharpPlus.CommandsNext;
 using DSharpPlus.CommandsNext.Attributes;
 using DSharpPlus.Entities;
 using DSharpPlus.Interactivity;
+using Newtonsoft.Json;
 
 namespace DSharpBotCore.Modules.Modes
 {
@@ -16,7 +18,7 @@ namespace DSharpBotCore.Modules.Modes
     {
         private readonly Bot bot;
         private readonly Dictionary<Symbol, DiscordEmoji> symbolEmoji = new Dictionary<Symbol, DiscordEmoji>();
-        private readonly Dictionary<DiscordEmoji, Dice.DiceType> emojiDice = new Dictionary<DiscordEmoji, Dice.DiceType>();
+        private readonly HashSet<(DiscordEmoji emoji, Dice.DiceType type)> emojiDice = new HashSet<(DiscordEmoji, Dice.DiceType)>();
         private readonly List<DiscordEmoji> emojiDiceOrder = new List<DiscordEmoji>();
 
         private DiscordEmoji confirmEmoji;
@@ -41,22 +43,22 @@ namespace DSharpBotCore.Modules.Modes
             {
                 var symbols = config.Commands.Roll.GenesysDice;
                 var emoji = await args.Guild.GetEmojiAsync(symbols.Boost);
-                emojiDice[emoji] = Dice.DiceType.Boost;
+                emojiDice.Add((emoji, Dice.DiceType.Boost));
                 emojiDiceOrder.Add(emoji);
                 emoji = await args.Guild.GetEmojiAsync(symbols.Ability);
-                emojiDice[emoji] = Dice.DiceType.Ability;
+                emojiDice.Add((emoji, Dice.DiceType.Ability));
                 emojiDiceOrder.Add(emoji);
                 emoji = await args.Guild.GetEmojiAsync(symbols.Proficiency);
-                emojiDice[emoji] = Dice.DiceType.Proficiency;
+                emojiDice.Add((emoji, Dice.DiceType.Proficiency));
                 emojiDiceOrder.Add(emoji);
                 emoji = await args.Guild.GetEmojiAsync(symbols.Setback);
-                emojiDice[emoji] = Dice.DiceType.Setback;
+                emojiDice.Add((emoji, Dice.DiceType.Setback));
                 emojiDiceOrder.Add(emoji);
                 emoji = await args.Guild.GetEmojiAsync(symbols.Difficulty);
-                emojiDice[emoji] = Dice.DiceType.Difficulty;
+                emojiDice.Add((emoji, Dice.DiceType.Difficulty));
                 emojiDiceOrder.Add(emoji);
                 emoji = await args.Guild.GetEmojiAsync(symbols.Challenge);
-                emojiDice[emoji] = Dice.DiceType.Challenge;
+                emojiDice.Add((emoji, Dice.DiceType.Challenge));
                 emojiDiceOrder.Add(emoji);
             };
             bot.Client.GuildAvailable += args =>
@@ -69,6 +71,35 @@ namespace DSharpBotCore.Modules.Modes
         }
 
         public Configuration Config { get; set; }
+
+        private string FormatDiceCounts(Dictionary<Dice.DiceType, int> dice, int showSeperateMax = 3)
+        {
+            var sb = new StringBuilder();
+            foreach (var count in dice)
+                if (count.Value > 0)
+                {
+                    if (count.Value > showSeperateMax)
+                        sb.Append(emojiDice.First(k => k.type == count.Key).emoji + $"x{count.Value} ");
+                    else
+                        for (var i = 0; i < count.Value; i++)
+                            sb.Append(emojiDice.First(k => k.type == count.Key).emoji);
+                }
+            return sb.ToString();
+        }
+        private string FormatSymbolCounts(Dictionary<Symbol, int> symbols, int showSeperateMax = 3)
+        {
+            var sb = new StringBuilder();
+            foreach (var count in symbols)
+                if (count.Value > 0)
+                {
+                    if (count.Value > showSeperateMax)
+                        sb.Append(symbolEmoji[count.Key] + $"x{count.Value} ");
+                    else
+                        for (var i = 0; i < count.Value; i++)
+                            sb.Append(symbolEmoji[count.Key]);
+                }
+            return sb.ToString();
+        }
 
         [Command("roll"), Aliases("r")]
         [Description("Rolls Genesys dice.")]
@@ -94,7 +125,7 @@ namespace DSharpBotCore.Modules.Modes
                 var toRollDice = new Dictionary<Dice.DiceType, int>();
                 foreach (var emoji in emojiDiceOrder)
                 {
-                    toRollDice.Add(emojiDice[emoji], 0);
+                    toRollDice.Add(emojiDice.First(t => t.emoji == emoji).type, 0);
                     beforeRollEmbed.AddField(emoji, "0", true);
                 }
 
@@ -128,9 +159,9 @@ namespace DSharpBotCore.Modules.Modes
                             break;
                         }
 
-                        if (emojiDice.ContainsKey(reaction.Emoji))
+                        if (emojiDice.Any(t => t.emoji == reaction.Emoji))
                         {
-                            var type = emojiDice[reaction.Emoji];
+                            var type = emojiDice.First(t => t.emoji == reaction.Emoji).type;
                             toRollDice[type]++;
 
                             var field = beforeRollEmbed.Fields.First(em => em.Name == reaction.Emoji.ToString());
@@ -146,24 +177,9 @@ namespace DSharpBotCore.Modules.Modes
                     }
                 }
 
-
-
-                var rollEmbed = new DiscordEmbedBuilder(embedBase);
-                {
-                    string rollName = "";
-                    foreach (var count in toRollDice)
-                        if (count.Value > 0)
-                        {
-                            if (count.Value > 3)
-                                rollName += emojiDice.First(k => k.Value == count.Key).Key + $"x{count.Value} ";
-                            else
-                                for (var i = 0; i < count.Value; i++)
-                                    rollName += emojiDice.First(k => k.Value == count.Key).Key;
-                        }
-
-                    rollEmbed.WithTitle("Rolling");
-                    rollEmbed.WithDescription(rollName);
-                }
+                var rollEmbed = new DiscordEmbedBuilder(embedBase)
+                    .WithTitle("Rolling")
+                    .WithDescription(FormatDiceCounts(toRollDice));
 
                 var random = new Random();
 
@@ -218,17 +234,7 @@ namespace DSharpBotCore.Modules.Modes
                 }
 
                 {
-                    string results = "";
-
-                    foreach (var count in finalCounts)
-                        if (count.Value > 0)
-                        {
-                            if (count.Value > 3)
-                                results += symbolEmoji[count.Key] + $"x{count.Value} ";
-                            else
-                                for (var i = 0; i < count.Value; i++)
-                                    results += symbolEmoji[count.Key];
-                        }
+                    var results = FormatSymbolCounts(finalCounts);
 
                     if (string.IsNullOrWhiteSpace(results))
                         rollEmbed.AddField("", "*No results.*", inline: true);
@@ -236,23 +242,75 @@ namespace DSharpBotCore.Modules.Modes
                         rollEmbed.AddField("Roll Results", results);
                 }
                 {
-                    string results = "";
-
-                    foreach (var count in maintained)
-                        if (count.Value > 0)
-                        {
-                            if (count.Value > 3)
-                                results += symbolEmoji[count.Key] + $"x{count.Value} ";
-                            else
-                                for (var i = 0; i < count.Value; i++)
-                                    results += symbolEmoji[count.Key];
-                        }
+                    var results = FormatSymbolCounts(maintained);
 
                     if (!string.IsNullOrWhiteSpace(results))
                         rollEmbed.AddField("Persisted Effect", results);
                 }
 
                 await ctx.RespondAsync(embed: rollEmbed.Build());
+            }
+            catch (Exception e)
+            {
+                await ctx.ErrorWith(bot, e.Message, e.StackTrace);
+            }
+        }
+
+        [Command("crit"), Aliases("k", "cr")]
+        [Description("Rolls for a Genesys crit, based on the configured results.")]
+        public async Task RollForCrit(CommandContext ctx,
+            [Description("The number of crits the player has endured previously.")] int prevCrits = 0)
+        {
+            try
+            {
+                await ctx.TriggerTypingAsync();
+
+                if (Config.Commands.Roll.DeleteTrigger)
+                    await ctx.Message.DeleteAsync();
+
+                var authMember = await ctx.Guild.GetMemberAsync(ctx.Message.Author.Id);
+
+                var embedBase = new DiscordEmbedBuilder()
+                    .WithMemberAsAuthor(authMember)
+                    .WithDefaultFooter(bot);
+
+                var roll = Config.Commands.GenesysCrits.RollRange.RandomInRange(new Random());
+                var adjRoll = roll + (prevCrits * Config.Commands.GenesysCrits.CritAdder);
+
+                Configuration.CommandsObject.GenesysCritsObject.CritResult Result(int roll)
+                    => Config.Commands.GenesysCrits.Results.FirstOrDefault(r => r.Range.InRange(roll));
+
+                var result = Result(adjRoll);
+                if (result == null)
+                {
+                    Configuration.CommandsObject.GenesysCritsObject.CritResult below = null, above = null;
+                    var belowRoll = adjRoll; 
+                    var aboveRoll = adjRoll;
+                    while (below == null && --belowRoll >= 0 && adjRoll - belowRoll < 10)
+                        below = Result(belowRoll);
+                    while (above == null && ++aboveRoll <= int.MaxValue && aboveRoll - adjRoll < 10)
+                        above = Result(aboveRoll);
+                    var addin = Array.Empty<(string, string)>() as IEnumerable<(string, string)>;
+                    if (below != null)
+                        addin = addin.Append(("Nearest result below", JsonConvert.SerializeObject(below, Formatting.Indented)));
+                    if (above != null)
+                        addin = addin.Append(("Nearest result above", JsonConvert.SerializeObject(above, Formatting.Indented)));
+
+                    await ctx.ErrorWith(bot, "Crit configuration error", $"No result for roll {adjRoll} (base {roll})", addin);
+                    return;
+                }
+
+                var embed = new DiscordEmbedBuilder(embedBase)
+                    .WithTitle($"{result.Name}")
+                    .WithDescription(result.Description);
+                var costStr = FormatDiceCounts(result.Costs, 5);
+                if (!string.IsNullOrWhiteSpace(costStr))
+                    embed.AddField("Additional Dice", costStr, true);
+                embed.AddField("Crit Number", $"{prevCrits + 1}", true);
+                if (Config.Commands.GenesysCrits.ShowRolls)
+                    embed.AddField($"Rolled", $"{adjRoll} (base {roll})", true);
+
+                await ctx.RespondAsync(embed: embed.Build());
             }
             catch (Exception e)
             {

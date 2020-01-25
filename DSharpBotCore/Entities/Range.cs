@@ -5,9 +5,9 @@ namespace DSharpBotCore.Entities
 {
     public class Range
     {
-        [JsonProperty("min", Required = Required.DisallowNull)]
+        [JsonProperty("min")]
         public int? Min { get; set; } = null;
-        [JsonProperty("max", Required = Required.DisallowNull)]
+        [JsonProperty("max")]
         public int? Max { get; set; } = null;
 
         public bool InRange(int value)

@@ -2,10 +2,13 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using DSharpBotCore.Extensions;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Serialization;
 
 namespace DSharpBotCore.Modules.Modes.Genesys
 {
-    class Dice
+    public class Dice
     {
         public class SizeAttribute : Attribute
         {
@@ -29,6 +32,7 @@ namespace DSharpBotCore.Modules.Modes.Genesys
             }
         }
 
+        [JsonConverter(typeof(StringEnumConverter), typeof(CamelCaseNamingStrategy))]
         public enum DiceType
         {
             [Size(6)]

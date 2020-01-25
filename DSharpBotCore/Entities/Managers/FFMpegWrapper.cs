@@ -324,6 +324,7 @@ namespace DSharpBotCore.Entities.Managers
                 Arguments = args,
                 RedirectStandardOutput = redirectStdOut,
                 RedirectStandardInput = redirectStdIn,
+                RedirectStandardError = false,
                 UseShellExecute = false
             };
 

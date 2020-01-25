@@ -127,7 +127,11 @@ namespace DSharpBotCore.Entities.Managers
         {
             if (playerThread != null)
             {
-                stopToken.Cancel();
+                try
+                {
+                    stopToken.Cancel();
+                }
+                catch (Exception) { }
                 playerThread.Join();
                 playerThread = null;
 
@@ -159,13 +163,15 @@ namespace DSharpBotCore.Entities.Managers
         {
             if (currentDiscordPipe == null) return false;
 
+            VNext.Pause();
             return currentDiscordPipe.Pause();
         }
 
-        public bool ResumePlaying()
+        public async Task<bool> ResumePlaying()
         {
             if (currentDiscordPipe == null) return false;
 
+            await VNext.ResumeAsync();
             return currentDiscordPipe.Resume();
         }
 

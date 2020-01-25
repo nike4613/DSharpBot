@@ -91,7 +91,10 @@ namespace DSharpBotCore.Entities
             finally
             {
                 foreach (var output in outputs)
+                {
+                    output.Flush();
                     output.Close();
+                }
             }
         }
 

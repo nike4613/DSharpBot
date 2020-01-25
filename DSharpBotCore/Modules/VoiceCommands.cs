@@ -312,7 +312,7 @@ namespace DSharpBotCore.Modules
 
             try
             {
-                queue.ResumePlaying();
+                await queue.ResumePlaying();
                 await RespondTemporary(ctx.RespondAsync("Resumed."));
             }
             catch (Exception e)

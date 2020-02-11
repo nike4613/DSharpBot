@@ -77,77 +77,84 @@ namespace DSharpBotCore.Modules
         public async Task Play(CommandContext ctx, 
             [Description("The audio to play")] string url)
         {
-            if (config.Commands.MiscDeleteTrigger)
-                await ctx.Message.DeleteAsync("Delete trigger.");
-
-            var embed = new DiscordEmbedBuilder();
-
-            embed.WithTitle("*Looking up info...*")
-                 .WithUserAsAuthor(ctx.User)
-                 .WithColor(new DiscordColor("#352fe0"))
-                 .WithDefaultFooter(bot);
-
-            var lookupMessage = await ctx.RespondAsync(embed: embed);
-
-            var entries = await ytdl.GetUrlInfoStructs(new Uri(url));
-
-            if (entries.Length == 0)
+            try
             {
-                embed.WithTitle("Error in lookup")
-                     .WithColor(new DiscordColor("#ff0000"))
-                     .WithDescription("No entries found for URL");
-                var msg = lookupMessage.ModifyAsync(embed: embed.Build());
-                await RespondTemporary(msg);
-                return;
-            }
-            if (entries.Length == 1)
-            {
-                embed.WithTitle($"Added **{entries[0].Title.Sanitize()}**")
-                     .WithImageUrl(entries[0].Thumbnail)
-                     .WithDescription($"**[{entries[0].Title.Sanitize()}]({entries[0].Url})**\n[{entries[0].Author.Sanitize()}]({entries[0].AuthorUri})");
-            }
-            else
-            {
-                embed.WithTitle($"Added **{entries.Length}** items to the queue")
-                     .WithUrl(url);
-                     //.WithDescription($"The playlist has **{entries.Length}** entries.");
-            }
+                if (config.Commands.MiscDeleteTrigger)
+                    await ctx.Message.DeleteAsync("Delete trigger.");
 
-            var channel = ctx.Channel;
-            foreach (var entry in entries)
-            {
-                queue.Add(new PlayQueue.QueueEntry(entry)
+                var embed = new DiscordEmbedBuilder();
+
+                embed.WithTitle("*Looking up info...*")
+                     .WithUserAsAuthor(ctx.User)
+                     .WithColor(new DiscordColor("#352fe0"))
+                     .WithDefaultFooter(bot);
+
+                var lookupMessage = await ctx.RespondAsync(embed: embed);
+
+                var entries = await ytdl.GetUrlInfoStructs(new Uri(url));
+
+                if (entries.Length == 0)
                 {
-                    OnPlayStart = () =>
+                    embed.WithTitle("Error in lookup")
+                         .WithColor(new DiscordColor("#ff0000"))
+                         .WithDescription("No entries found for URL");
+                    var msg = lookupMessage.ModifyAsync(embed: embed.Build());
+                    await RespondTemporary(msg);
+                    return;
+                }
+                if (entries.Length == 1)
+                {
+                    embed.WithTitle($"Added **{entries[0].Title.Sanitize()}**")
+                         .WithImageUrl(entries[0].Thumbnail)
+                         .WithDescription($"**[{entries[0].Title.Sanitize()}]({entries[0].Url})**\n[{entries[0].Author.Sanitize()}]({entries[0].AuthorUri})");
+                }
+                else
+                {
+                    embed.WithTitle($"Added **{entries.Length}** items to the queue")
+                         .WithUrl(url);
+                         //.WithDescription($"The playlist has **{entries.Length}** entries.");
+                }
+
+                var channel = ctx.Channel;
+                foreach (var entry in entries)
+                {
+                    queue.Add(new PlayQueue.QueueEntry(entry)
                     {
-                        var builder = new DiscordEmbedBuilder();
-                        builder.WithTitle("Now Playing")
-                              .WithImageUrl(entry.Thumbnail)
-                              .WithDescription($"**[{entry.Title.Sanitize()}]({entry.Url})**\n[{entry.Author.Sanitize()}]({entry.AuthorUri})")
-                              .WithColor(new DiscordColor("#352fe0"))
-                              .WithDefaultFooter(bot);
-                        channel.SendMessageAsync(embed: builder);
-                    },
-                    OnPlayError = e =>
-                    {
-                        var builder = new DiscordEmbedBuilder();
-                        builder.WithTitle("Error while playing song")
-                               .WithImageUrl(entry.Thumbnail)
-                               .WithDescription($"Song:\n\t**[{entry.Title.Sanitize()}]({entry.Url})**\n\t[{entry.Author.Sanitize()}]({entry.AuthorUri})")
-                               .WithColor(new DiscordColor("#ff0000"))
-                               .WithDefaultFooter(bot);
-                        builder.AddField($"{e.GetType().FullName}: {e.Message}", e.StackTrace);
-                        channel.SendMessageAsync(embed: builder);
-                    }
-                });
+                        OnPlayStart = () =>
+                        {
+                            var builder = new DiscordEmbedBuilder();
+                            builder.WithTitle("Now Playing")
+                                  .WithImageUrl(entry.Thumbnail)
+                                  .WithDescription($"**[{entry.Title.Sanitize()}]({entry.Url})**\n[{entry.Author.Sanitize()}]({entry.AuthorUri})")
+                                  .WithColor(new DiscordColor("#352fe0"))
+                                  .WithDefaultFooter(bot);
+                            channel.SendMessageAsync(embed: builder);
+                        },
+                        OnPlayError = e =>
+                        {
+                            var builder = new DiscordEmbedBuilder();
+                            builder.WithTitle("Error while playing song")
+                                   .WithImageUrl(entry.Thumbnail)
+                                   .WithDescription($"Song:\n\t**[{entry.Title.Sanitize()}]({entry.Url})**\n\t[{entry.Author.Sanitize()}]({entry.AuthorUri})")
+                                   .WithColor(new DiscordColor("#ff0000"))
+                                   .WithDefaultFooter(bot);
+                            builder.AddField($"{e.GetType().FullName}: {e.Message}", e.StackTrace);
+                            channel.SendMessageAsync(embed: builder);
+                        }
+                    });
+                }
+
+                var message = lookupMessage.ModifyAsync(embed: embed.Build());
+
+                if (config.Voice.IsNowPlayingConfirmation)
+                    await RespondTemporary(message, false);
+                else
+                    await message;
             }
-
-            var message = lookupMessage.ModifyAsync(embed: embed.Build());
-
-            if (config.Voice.IsNowPlayingConfirmation)
-                await RespondTemporary(message, false);
-            else
-                await message;
+            catch (Exception e)
+            {
+                await ctx.ErrorWith(bot, e.Message, e.StackTrace);
+            }
         }
 
         [Command("volume"), Description("Gets or sets the volume"), Priority(0)]

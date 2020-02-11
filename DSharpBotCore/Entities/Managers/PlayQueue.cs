@@ -229,9 +229,9 @@ namespace DSharpBotCore.Entities.Managers
                     self.PlayStart?.Invoke(item);
                     
                     if (!localFile) await self.ytdl.StreamInItem(item.Info, ytdlPipe, stopOrNext.Token);
-                    await self.VNext.WaitForPlaybackFinishAsync();
                     await pipe.AwaitEndOfStream;
                     await ffmpeg.AwaitProcessEnd;
+                    await self.VNext.WaitForPlaybackFinishAsync();
                     self.currentDiscordPipe?.Close();
                     self.currentDiscordPipe = null;
 

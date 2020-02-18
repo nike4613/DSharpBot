@@ -217,7 +217,7 @@ namespace DSharpBotCore.Entities.Managers
                                                                        item.FileName, item.Format) { Options = "-ac 2 -ar 64k" });
                     }
 
-                    self.VNext.SendSpeaking(true);
+                    await self.VNext.SendSpeakingAsync(true);
 
                     var pipe = self.currentDiscordPipe = new BufferedPipe();
                     pipe.SetToken(stopOrNext.Token);
@@ -257,7 +257,7 @@ namespace DSharpBotCore.Entities.Managers
                     try
                     {
                         if (self?.VNext != null)
-                            self.VNext.SendSpeaking(false);
+                            await self.VNext.SendSpeakingAsync(false);
                     }
                     catch (InvalidOperationException)
                     {

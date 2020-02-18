@@ -130,11 +130,17 @@ namespace DSharpBotCore.Modules.Modes
                 }
 
                 var message = await ctx.RespondAsync(embed: beforeRollEmbed);
+                await Task.Delay(Config.Commands.Roll.ReactionDelay);
                 foreach (var emoji in emojiDiceOrder)
+                {
                     await message.CreateReactionAsync(emoji);
+                    await Task.Delay(Config.Commands.Roll.ReactionDelay);
+                }
                 await message.CreateReactionAsync(confirmEmoji);
+                await Task.Delay(Config.Commands.Roll.ReactionDelay);
                 await message.CreateReactionAsync(cancelEmoji);
-                await message.CreateReactionAsync(symbolEmoji.First().Value);
+                //await Task.Delay(Config.Commands.Roll.ReactionDelay);
+                //await message.CreateReactionAsync(symbolEmoji.First().Value);
 
                 while (true)
                 {
@@ -142,13 +148,16 @@ namespace DSharpBotCore.Modules.Modes
                     var reactionResult = await interact.WaitForReactionAsync(r => true, message, authMember);
                     var reaction = reactionResult.Result;
                     if (!reaction.User.Equals(ctx.Message.Author))
+                    {
                         await message.DeleteReactionAsync(reaction.Emoji, reaction.User, "Cannot choose dice");
+                        await Task.Delay(Config.Commands.Roll.ReactionDelay);
+                    }
                     else
                     {
                         if (reaction.Emoji.Equals(cancelEmoji))
                         {
                             await message.DeleteAsync();
-                            await ctx.RespondAsync(embed: 
+                            await ctx.RespondAsync(embed:
                                 new DiscordEmbedBuilder(embedBase).WithTitle("Roll canceled").Build());
                             return;
                         }

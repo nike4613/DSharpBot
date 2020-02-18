@@ -261,6 +261,9 @@ namespace DSharpBotCore.Entities
                 [JsonProperty("reactions")]
                 public ReactionObject Reactions;
 
+                [JsonProperty("reactionDelay", Required = Required.DisallowNull)]
+                public TimeSpan ReactionDelay = TimeSpan.FromSeconds(1);
+
                 [JsonProperty("deleteTrigger", Required = Required.DisallowNull)]
                 public bool DeleteTrigger;
             }

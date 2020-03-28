@@ -246,7 +246,7 @@ namespace DSharpBotCore.Modules.Modes
                     var results = FormatSymbolCounts(finalCounts);
 
                     if (string.IsNullOrWhiteSpace(results))
-                        rollEmbed.AddField("", "*No results.*", inline: true);
+                        rollEmbed.AddField("Roll Results", "*Empty Roll.*", inline: true);
                     else
                         rollEmbed.AddField("Roll Results", results);
                 }

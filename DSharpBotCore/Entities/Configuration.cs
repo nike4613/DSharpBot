@@ -155,7 +155,7 @@ namespace DSharpBotCore.Entities
                 public PaginationDeletion Deletion = PaginationDeletion.DeleteMessage;
 
                 [JsonProperty("behavior", Required = Required.DisallowNull), JsonConverter(typeof(StringEnumConverter))]
-                public PaginationBehaviour Behavior = PaginationBehaviour.Default;
+                public PaginationBehaviour Behavior = PaginationBehaviour.Ignore;
             }
 
             [JsonProperty("pagination", Required = Required.DisallowNull)]

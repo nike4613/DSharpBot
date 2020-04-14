@@ -31,7 +31,10 @@ namespace DSharpBotCore
             for (int i = 0; i < skipline; i++)
                 Console.WriteLine();
 
-            Console.SetCursorPosition((Console.WindowWidth - value.Length) / 2, Console.CursorTop);
+            if (Console.WindowWidth > value.Length)
+                Console.SetCursorPosition((Console.WindowWidth - value.Length) / 2, Console.CursorTop);
+            else
+                Console.SetCursorPosition(0, Console.CursorTop);
             Console.WriteLine(value);
         }
 
